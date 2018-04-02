@@ -53,7 +53,7 @@ last_top_tips=datetime.datetime.now() - datetime.timedelta(seconds=SPAM_THRESHOL
 
 ### Response Templates ###
 HELP_INFO="%shelp or %sman:\n Display this message" % (COMMAND_PREFIX, COMMAND_PREFIX)
-BALANCE_INFO=("%sbalance:\n Displays the balance of your tip account (in nanorai) as described:" +
+BALANCE_INFO=("%sbalance:\n Displays the balance of your tip account" +
 		"\n - Actual Balance: The actual balance in your tip account" +
 		"\n - Available Balance: The balance you are able to tip with (Actual - Pending Send)" +
 		"\n - Pending Send: Tips you have sent, but have not yet been processed by the node" +
@@ -121,7 +121,7 @@ BALANCE_TEXT=(	"```Actual Balance   : %s BANANO\n" +
 DEPOSIT_TEXT="Your wallet address is:"
 DEPOSIT_TEXT_2="%s"
 DEPOSIT_TEXT_3="QR: %s"
-INSUFFICIENT_FUNDS_TEXT="You don't have enough nano in your available balance!"
+INSUFFICIENT_FUNDS_TEXT="You don't have enough BANANO in your available balance!"
 TIP_ERROR_TEXT="Something went wrong with the tip. I wrote to logs."
 TIP_RECEIVED_TEXT="You were tipped %d BANANO by %s"
 TIP_USAGE="Usage:\n```" + TIP_INFO + "```"
@@ -451,6 +451,7 @@ async def rain_task(message):
 	try:
 		amount = find_amount(message.content)
 		if amount < RAIN_MINIMUM:
+			await add_x_reaction(message)
 			raise util.TipBotException("usage_error")
 		# Create tip list
 		users_to_tip = []
