@@ -1,6 +1,4 @@
 import discord
-from discord.ext import commands
-from discord.ext.commands import Bot
 import threading
 from threading import Thread
 from queue import Queue
@@ -21,7 +19,7 @@ import db
 
 logger = util.get_logger("main")
 
-BOT_VERSION = "0.8"
+BOT_VERSION = "1.6"
 
 # How many users to display in the top users count
 TOP_TIPPERS_COUNT=15
@@ -30,7 +28,7 @@ RAIN_MINIMUM = settings.rain_minimum
 # Minimum amount for !startgiveaway
 GIVEAWAY_MINIMUM = settings.giveaway_minimum
 # Giveaway duration
-GIVEAWAY_DURATION = 60 if settings.giveaway_duration > 60 else settings.giveaway_duration
+GIVEAWAY_DURATION = 60
 # Rain Delta (Minutes) - How long to look back for active users for !rain
 RAIN_DELTA=30
 # Spam Threshold (Seconds) - how long to output certain commands (e.g. bigtippers)
@@ -41,19 +39,20 @@ MAX_TX_RETRIES=3
 COMMAND_PREFIX=settings.command_prefix
 # Withdraw Check Job - checks for completed withdraws at this interval
 WITHDRAW_CHECK_JOB=15
+# Pool giveaway auto amount (1%)
+TIPGIVEAWAY_AUTO_ENTRY=int(.01 * GIVEAWAY_MINIMUM)
 
 # Create discord client
-client = Bot(command_prefix=COMMAND_PREFIX)
-# Use custom help command
-client.remove_command('help')
+client = discord.Client()
 
 # Spam prevention
-last_big_tippers=datetime.datetime.now() - datetime.timedelta(seconds=SPAM_THRESHOLD)
-last_top_tips=datetime.datetime.now() - datetime.timedelta(seconds=SPAM_THRESHOLD)
+last_big_tippers=datetime.datetime.now()
+last_top_tips=datetime.datetime.now()
 
 ### Response Templates ###
-HELP_INFO="%shelp or %sman:\n Display this message" % (COMMAND_PREFIX, COMMAND_PREFIX)
-BALANCE_INFO=("%sbalance:\n Displays the balance of your tip account" +
+COMMAND_NOT_FOUND="I don't understand what you're saying, try %shelp" % COMMAND_PREFIX
+HELP_INFO="%shelp:\n Display this message" % (COMMAND_PREFIX)
+BALANCE_INFO=("%sbalance:\n Displays the balance of your tip account as described:" +
 		"\n - Actual Balance: The actual balance in your tip account" +
 		"\n - Available Balance: The balance you are able to tip with (Actual - Pending Send)" +
 		"\n - Pending Send: Tips you have sent, but have not yet been processed by the node" +
@@ -64,24 +63,25 @@ DEPOSIT_INFO=("%sdeposit or %sregister:\n Displays your tip bot account address 
 		"\n If you do not have a tip bot account yet, this command will create one for you") % (COMMAND_PREFIX, COMMAND_PREFIX)
 WITHDRAW_INFO="%swithdraw <address>:\n Withdraws your entire tip account balance to the specified address" % COMMAND_PREFIX
 TIP_INFO=("%sban <amount> <*users>:\n Tip specified amount to mentioned user(s) (minimum tip is 1 BANANO)" +
-		"\n Tip units are in BANANO." +
+		"\n Tip units are in whole BANANO" +
 		"\n The recipient(s) will be notified of your tip via private message" +
 		"\n Successful tips will be deducted from your available balance immediately") % COMMAND_PREFIX
 TIPSPLIT_INFO="%sbansplit <amount> <*users>:\n Distribute <amount> evenly to all mentioned users" % COMMAND_PREFIX
-RAIN_INFO=("%srain <amount>:\n Distribute <amount> evenly to all users who meet the following criteria:" +
-		"\n - Have a tip account (have received a tip before, or have used %sregister)" +
-		"\n - Are currently online" +
-		"\n - Have posted a message on the server within the last %d minutes" +
-		"\n Minimum rain amount: %d BANANO") % (COMMAND_PREFIX, COMMAND_PREFIX, RAIN_DELTA, RAIN_MINIMUM)
-START_GIVEAWAY_INFO=("%sgiveaway or %ssponsorgiveaway <amount>:\n Start a giveaway with given amount." +
+RAIN_INFO=("%srain <amount>:\n Distribute <amount> evenly to users who are eligible. To receive rain:" +
+		"\n - You must be online" +
+		"\n - Must have used this tip bot before" +
+		"\n - Must be online and have contributed to public channels for an extended period of time" +
+		"\n Minimum rain amount: %d BANANO") % (COMMAND_PREFIX, RAIN_MINIMUM)
+START_GIVEAWAY_INFO=("%sgiveaway or %ssponsorgiveaway <amount> <entry_fee>:\n Start a giveaway with given amount and entry fee in BANANO." +
+		"\n Entry costs are added to the total prize pool"
 		"\n Minimum amount to start giveaway: %d BANANO" +
-		"\n Giveaway will end and choose random winner after %d minutes") % (COMMAND_PREFIX, COMMAND_PREFIX, GIVEAWAY_MINIMUM, GIVEAWAY_DURATION)
-ENTER_INFO="%senter or %sentergiveaway:\n Enter the current giveaway, if there is one" % (COMMAND_PREFIX, COMMAND_PREFIX)
-TIPGIVEAWAY_INFO="%sdonate <amount>\n Add <amount> to the current giveaway pool\n If there is no giveaway, one will be started when minimum is reached.\n Tips >= %d BANANO automatically enter you for the next giveaway" % (COMMAND_PREFIX, settings.giveaway_auto_amt)
+		"\n Giveaway will end and choose random winner after 60 minutes") % (COMMAND_PREFIX, COMMAND_PREFIX, GIVEAWAY_MINIMUM)
+ENTER_INFO="%sticket or %senter:\n Enter the current giveaway, if there is one" % (COMMAND_PREFIX, COMMAND_PREFIX)
+TIPGIVEAWAY_INFO="%sdonate <amount>\n Add <amount> to the current giveaway pool\n If there is no giveaway, one will be started when minimum is reached.\n Tips >= %d BANANO automatically enter you for giveaways sponsored by the community (Not for giveaways sponsored by individuals)" % (COMMAND_PREFIX, TIPGIVEAWAY_AUTO_ENTRY)
 GIVEAWAY_STATS_INFO="%sgiveawaystats or %sgoldenticket:\n Display statistics relevant to the current giveaway" % (COMMAND_PREFIX, COMMAND_PREFIX)
-LEADERBOARD_INFO="%sballers or %sbigtippers:\n Display the all-time tip leaderboard" % (COMMAND_PREFIX, COMMAND_PREFIX)
+LEADERBOARD_INFO="%sballers:\n Display the all-time tip leaderboard" % COMMAND_PREFIX
 TOPTIPS_INFO="%stoptips:\n Display the single largest tips for the past 24 hours, current month, and all time" % COMMAND_PREFIX
-STATS_INFO="%sbanstats:\n Display your personal tipping stats (rank, total tipped, and average tip)" % COMMAND_PREFIX
+STATS_INFO="%stipstats:\n Display your personal tipping stats (rank, total tipped, and average tip)" % COMMAND_PREFIX
 SETTIP_INFO=("%ssettiptotal <user>:\n Manually set the 'total tipped' for a user (for tip leaderboard)" +
 		"\n This command is role restricted and only available to users with certain roles (e.g. Moderators)") % COMMAND_PREFIX
 SETCOUNT_INFO=("%ssettipcount <user>:\n Manually set the 'tip count' for a user (for average tip statistic)" +
@@ -113,7 +113,7 @@ HELP_TEXT_4=("Stats Commands:\n" +
 #              SETCOUN_INFO +
 		GIVEAWAY_STATS_INFO +
                 "\n\n\nsend node```" +
-                "Source code: https://github.com/bbedward/NANO-Tip-Bot")
+                "Source code: https://github.com/bbedward/BANANO-Tip-Bot")
 BALANCE_TEXT=(	"```Actual Balance   : %s BANANO\n" +
 		"Available Balance: %s BANANO\n" +
 		"Pending Send     : %s BANANO\n" +
@@ -132,29 +132,45 @@ WITHDRAW_NO_BALANCE_TEXT="You have no BANANO to withdraw"
 WITHDRAW_ADDRESS_NOT_FOUND_TEXT="Usage:\n```" + WITHDRAW_INFO + "```"
 WITHDRAW_INVALID_ADDRESS_TEXT="Withdraw address is not valid"
 WITHDRAW_ERROR_TEXT="Something went wrong ! :thermometer_face: "
-TOP_HEADER_TEXT="Here are the top %d tippers."
+TOP_HEADER_TEXT="Here are the top %d tippers"
 TOP_HEADER_EMPTY_TEXT="The leaderboard is empty!"
-TOP_SPAM="No more ballers for %d seconds"
-STATS_ACCT_NOT_FOUND_TEXT="I could not find an account for you, try private messaging me .register"
-STATS_TEXT="You are rank #%d, have tipped a total of %.2f BANANO, with an average tip of %.2f BANANO"
+TOP_SPAM="No more big tippers for %d seconds"
+STATS_ACCT_NOT_FOUND_TEXT="I could not find an account for you, try private messaging me `%sregister`" % COMMAND_PREFIX
+STATS_TEXT="You are rank #%d, you've tipped a total of %.2f BANANO, your average tip is %.2f BANANO, and your biggest tip of all time is %.2f BANANO"
 SET_TOTAL_USAGE="Usage:\n```" + SETTIP_INFO + "```"
 SET_COUNT_USAGE="Usage:\n```" + SETCOUNT_INFO + "```"
 TIPSPLIT_USAGE="Usage:\n```" + TIPSPLIT_INFO + "```"
 TIPSPLIT_SMALL="Tip amount is too small to be distributed to that many users"
 RAIN_USAGE="Usage:\n```" + RAIN_INFO + "```"
-RAIN_NOBODY="I couldn't find any active users...besides you :wink:"
+RAIN_NOBODY="I couldn't find anybody eligible to receive rain"
 GIVEAWAY_EXISTS="There's already an active giveaway"
 GIVEAWAY_USAGE="Usage:\n```" + START_GIVEAWAY_INFO + "```"
-GIVEAWAY_STARTED="%s has sponsored a giveaway of %.2f BANANO! Use " + COMMAND_PREFIX + "enter to enter and " + COMMAND_PREFIX + "donate to increase the pot!"
+GIVEAWAY_STARTED="%s has sponsored a giveaway of %.2f BANANO! Use `" + COMMAND_PREFIX + "ticket` to enter and `" + COMMAND_PREFIX + "donate` to increase the pot!"
+GIVEAWAY_STARTED_FEE="%s has sponsored a giveaway of %.2f BANANO! The entry fee is %d BANANO. Use `" + COMMAND_PREFIX + "ticket %d` to buy your ticket and `" + COMMAND_PREFIX + "donate` to increase the pot!"
+GIVEAWAY_MAX_FEE="Giveaway entry fee cannot be more than 5% of the prize pool"
 GIVEAWAY_ENDED="Congratulations! <@%s> was the winner of the giveaway! They have been sent %.2f BANANO!"
-GIVEAWAY_STATS="There are %d entries to win %.2f BANANO ending in %s - sponsored by %s"
-GIVEAWAY_STATS_INACTIVE="There are no active giveaways\n%d BANANO required to autostart one"
+GIVEAWAY_STATS="There are %d entries to win %.2f BANANO ending in %s - sponsored by %s.\nUse `" + COMMAND_PREFIX + "ticket` to enter and `" + COMMAND_PREFIX + "donate` to add to the pot"
+GIVEAWAY_STATS_FEE="There are %d entries to win %.2f BANANO ending in %s - sponsored by %s.\nEntry fee: %d BANANO. Use `" + COMMAND_PREFIX + "ticket %d` to enter and `" + COMMAND_PREFIX + "donate` to add to the pot!"
+GIVEAWAY_STATS_INACTIVE="There are no active giveaways\n%d BANANO required to to automatically start one! Donate to the pot using `" + COMMAND_PREFIX + "donate`. You can also sponsor one using `" + COMMAND_PREFIX + "giveaway`"
 ENTER_ADDED="You've been successfully entered into the giveaway"
 ENTER_DUP="You've already entered the giveaway"
-TIPGIVEAWAY_NO_ACTIVE="There are no active giveaways"
 TIPGIVEAWAY_USAGE="Usage:\n```" + TIPGIVEAWAY_INFO + "```"
+TIPGIVEAWAY_NO_ACTIVE="There are no active giveaways. Check giveaway status using `%sgiveawaystats`, or donate to the next one using `%stipgiveaway`" % (COMMAND_PREFIX, COMMAND_PREFIX)
+TIPGIVEAWAY_ENTERED_FUTURE="Your generous donation makes you eligible for the next community sponsored giveaway!"
 TOPTIP_SPAM="No more top tips for %d seconds"
+PAUSE_MSG="All transaction activity is currently suspended. Check back later."
+BAN_SUCCESS="User %s can no longer receive tips"
+BAN_DUP="User %s is already banned"
+UNBAN_SUCCESS="User %s has been unbanned"
+UNBAN_DUP="User %s is not banned"
+RIGHTS="```You have been arrested by the BRPD for crimes against the Banano Republic. You have the right to remain unripe. Anything you say can and will be used against you in a banano court. You have the right to have an orangutan. If you cannot afford one, one will be appointed to you by the court. Until your orangutan arrives, you will spend your time in #jail, bail is set at 50 BANANO.```"
+RELEASE="```You have been released from Jail!```"
+CITIZENSHIP="```I hereby declare you a Citizen of the Banano Republic, may the Banano gods grant you all things which your heart desires.```"
+DEPORT="```I hereby withdraw your Citizenship to the Banano Republic, we don’t want to talk to you no more, you empty-headed animal-food-trough wiper. We fart in your general direction. Your mother was a hamster, and your father smelt of elderberries.```"
 ### END Response Templates ###
+
+# Paused flag, indicates whether or not bot is paused
+paused = False
 
 # Thread to process send transactions
 # Queue is used to communicate back to main thread
@@ -178,16 +194,6 @@ class SendProcessor(Thread):
 				uid = tx['uid']
 				attempts = tx['attempts']
 				raw_withdraw_amt = str(amount) + '00000000000000000000000000000'
-				src_usr = db.get_user_by_wallet_address(source_address)
-				trg_usr = db.get_user_by_wallet_address(to_address)
-				if src_usr is not None:
-					source_id = src_usr.user_id
-				else:
-					source_id = None
-				if trg_usr is not None:
-					target_id = trg_usr.user_id
-				else:
-					target_id = None
 				wallet_command = {
 					'action': 'send',
 					'wallet': settings.wallet,
@@ -196,13 +202,27 @@ class SendProcessor(Thread):
 					'amount': int(raw_withdraw_amt),
 					'id': uid
 				}
+				src_usr = db.get_user_by_wallet_address(source_address)
+				trg_usr = db.get_user_by_wallet_address(to_address)
+				source_id=None
+				target_id=None
+				pending_delta = int(amount) * -1
+				if src_usr is not None:
+					source_id=src_usr.user_id
+				if trg_usr is not None:
+					target_id=trg_usr.user_id
+				db.mark_transaction_sent(uid, pending_delta, source_id, target_id)
 				logger.debug("RPC Send")
-				wallet_output = wallet.communicate_wallet(wallet_command)
+				try:
+
+					wallet_output = wallet.communicate_wallet(wallet_command)
+				except Exception as e:
+					logger.exception(e)
+					continue
 				logger.debug("RPC Response")
 				if 'block' in wallet_output:
 					txid = wallet_output['block']
-					pending_delta = int(amount) * -1 # To update users pending balances
-					db.mark_transaction_processed(uid, txid, pending_delta, source_id, target_id)
+					db.mark_transaction_processed(uid, txid)
 					logger.info('TX processed. UID: %s, TXID: %s', uid, txid)
 					if target_id is None:
 						withdrawq.put({'user_id':source_id, 'txid':txid})
@@ -210,7 +230,7 @@ class SendProcessor(Thread):
 					# Not sure what happen but we'll retry a few times
 					if attempts >= MAX_TX_RETRIES:
 						logger.info("Max Retires Exceeded for TX UID: %s", uid)
-						db.mark_transaction_processed(uid, 'invalid', int(amount) * -1, source_id, target_id)
+						db.mark_transaction_processed(uid, invalid)
 					else:
 						db.inc_tx_attempts(uid)
 			if self.stopped():
@@ -260,37 +280,111 @@ async def check_for_withdraw():
 	except Exception as ex:
 		logger.exception(ex)
 
+# Command List
+commands=['help', 'deposit', 'register', 'withdraw', 'balance',  'ban', 'bansplit', 'rain', 'giveaway', 'sponsorgiveaway', 'donate', 'ballers', 'toptips' ,'enter', 'ticket', 'donate', 'giveawaystats', 'goldenticket', 'tipstats', 'pause', 'unpause', 'tipban', 'tipunban','arrest','release','citizenship','deport']
+cmdlist=[COMMAND_PREFIX + c for c in commands]
+
 # Override on_message and do our spam check here
+nickname_set = False
 @client.event
 async def on_message(message):
-	if db.last_msg_check(message.author.id) == False:
+	global paused,nickname_set
+
+#	if not nickname_set and settings.discord_bot_name is not None:
+#		bot_member = message.server.get_member(client.user.id)
+#		await client.change_nickname(bot_member, settings.discord_bot_name)
+#		nickname_set = True
+
+	# disregard messages sent by our own bot
+	if message.author.id == client.user.id:
 		return
-	await client.process_commands(message)
+
+	if db.last_msg_check(message.author.id, message.content, message.channel.is_private) == False:
+		return
+
+	# Make sure cmd is supported
+	content = message.content
+	if len(content.split()) >= 1:
+		cmd = message.content.split(' ', 1)[0]
+	else:
+		return
+	if cmd not in cmdlist:
+		if message.channel.is_private:
+			await post_response(message, COMMAND_NOT_FOUND)
+		return
+	# Strip prefix from command
+	cmd = cmd[1:]
+	if cmd == 'help':
+		await help(message)
+	elif cmd == 'balance' and not paused:
+		await balance(message)
+	elif cmd == 'deposit' or cmd == 'register':
+		await deposit(message)
+	elif cmd == 'giveawaystats' or cmd == 'goldenticket':
+		await giveawaystats(message)
+	elif cmd == 'ballers':
+		await leaderboard(message)
+	elif cmd == 'toptips':
+		await toptips(message)
+	elif cmd == 'tipstats':
+		await tipstats(message)
+	elif cmd == 'tipban' and has_admin_role(message.author.roles):
+		await tipban(message)
+	elif cmd == 'tipunban' and has_admin_role(message.author.roles):
+		await tipunban(message)
+	elif cmd == 'pause' and has_admin_role(message.author.roles):
+		paused = True
+	elif cmd == 'unpause' and has_admin_role(message.author.roles):
+		paused = False
+	elif cmd == 'arrest' and has_admin_role(message.author.roles):
+		await arrest(message)
+	elif cmd == 'release' and has_admin_role(message.author.roles):
+		await release(message)
+	elif cmd == 'citizenship' and has_admin_role(message.author.roles):
+		await citizenship(message)
+	elif cmd == 'deport' and has_admin_role(message.author.roles):
+		await deport(message)
+	elif paused:
+		await post_dm(message.author, PAUSE_MSG)
+		return
+	elif cmd == 'withdraw':
+		await withdraw(message)
+	elif cmd == 'ban':
+		await tip(message)
+	elif cmd == 'bansplit':
+		await tipsplit(message)
+	elif cmd == 'rain':
+		await rain(message)
+	elif cmd == 'ticket' or cmd == 'enter':
+		await entergiveaway(message)
+		if not message.channel.is_private:
+			await remove_message(message)
+	elif cmd == 'giveaway' or cmd == 'sponsorgiveaway':
+		await givearai(message)
+	elif cmd == 'donate':
+		await tipgiveaway(message)
+
+def has_admin_role(roles):
+	for r in roles:
+		if r.name in settings.admin_roles:
+			return True
+	return False
 
 ### Commands
-@client.command(pass_context=True, aliases=['man'])
-async def help(ctx):
-	if ctx.message.channel.is_private:
+async def help(message):
+	if message.channel.is_private:
 		# Four messages because discord API responds in error with our really long help text
-		await post_response(ctx.message, HELP_TEXT_1, BOT_VERSION)
-		await post_response(ctx.message, HELP_TEXT_2)
-		await post_response(ctx.message, HELP_TEXT_3)
-		await post_response(ctx.message, HELP_TEXT_4)
-	else:
-		await post_dm(ctx.message.author, HELP_TEXT_1, BOT_VERSION)
-		await post_dm(ctx.message.author, HELP_TEXT_2)
-		await post_dm(ctx.message.author, HELP_TEXT_3)
-		await post_dm(ctx.message.author, HELP_TEXT_4)
-		await client.add_reaction(ctx.message, '\u2709')
+		await post_response(message, HELP_TEXT_1, BOT_VERSION)
+		await post_response(message, HELP_TEXT_2)
+		await post_response(message, HELP_TEXT_3)
+		await post_response(message, HELP_TEXT_4)
 
-
-@client.command(pass_context=True)
-async def balance(ctx):
-	if ctx.message.channel.is_private:
-		asyncio.get_event_loop().create_task(balance_task(ctx.message))
-
-async def balance_task(message):
-		balances = await wallet.get_balance_by_id(message.author.id)
+async def balance(message):
+	if message.channel.is_private:
+		user = db.get_user_by_id(message.author.id)
+		if user is None:
+			return
+		balances = await wallet.get_balance(user)
 		actual = balances['actual']
 		actualnano = actual
 		available = balances['available']
@@ -304,32 +398,30 @@ async def balance_task(message):
 								"{:,}".format(send),
 								"{:,}".format(receive))
 
-@client.command(pass_context=True, aliases=['register'])
-async def deposit(ctx):
-	if ctx.message.channel.is_private:
-		user = await wallet.create_or_fetch_user(ctx.message.author.id, ctx.message.author.name)
+async def deposit(message):
+	if message.channel.is_private:
+		user = await wallet.create_or_fetch_user(message.author.id, message.author.name)
 		user_deposit_address = user.wallet_address
-		await post_response(ctx.message, DEPOSIT_TEXT)
-		await post_response(ctx.message, DEPOSIT_TEXT_2, user_deposit_address)
-		await post_response(ctx.message, DEPOSIT_TEXT_3, get_qr_url(user_deposit_address))
+		await post_response(message, DEPOSIT_TEXT)
+		await post_response(message, DEPOSIT_TEXT_2, user_deposit_address)
+		await post_response(message, DEPOSIT_TEXT_3, get_qr_url(user_deposit_address))
 
-@client.command(pass_context=True)
-async def withdraw(ctx):
-	if ctx.message.channel.is_private:
-		asyncio.get_event_loop().create_task(withdraw_task(ctx.message))
-
-async def withdraw_task(message):
+async def withdraw(message):
+	if message.channel.is_private:
 		try:
 			withdraw_address = find_address(message.content)
-			source_id = message.author.id
-			source_address = db.get_address(source_id)
-			balance = await wallet.get_balance_by_id(source_id)
+			user = db.get_user_by_id(message.author.id)
+			if user is None:
+				return
+			source_id = user.user_id
+			source_address = user.wallet_address
+			balance = await wallet.get_balance(user)
 			amount = balance['available']
 			if amount == 0:
 				await post_response(message, WITHDRAW_NO_BALANCE_TEXT);
 			else:
 				uid = str(uuid.uuid4())
-				await wallet.make_transaction_to_address(source_id, source_address, amount, withdraw_address, uid)
+				await wallet.make_transaction_to_address(user, amount, withdraw_address, uid,verify_address = True)
 				await post_response(message, WITHDRAW_SUCCESS_TEXT)
 		except util.TipBotException as e:
 			if e.error_type == "address_not_found":
@@ -341,12 +433,10 @@ async def withdraw_task(message):
 			elif e.error_type == "error":
 				await post_response(message, WITHDRAW_ERROR_TEXT)
 
-@client.command(pass_context=True)
-async def ban(ctx):
-	if not ctx.message.channel.is_private:
-		asyncio.get_event_loop().create_task(tip_task(ctx.message))
+async def tip(message):
+	if message.channel.is_private:
+		return
 
-async def tip_task(message):
 	try:
 		amount = find_amount(message.content)
 		# Make sure amount is valid and at least 1 user is mentioned
@@ -356,7 +446,7 @@ async def tip_task(message):
 		users_to_tip = []
 		for member in message.mentions:
 			# Disregard mentions of exempt users and self
-			if member.id not in settings.exempt_users and member.id != message.author.id:
+			if member.id not in settings.exempt_users and member.id != message.author.id and not db.is_banned(member.id) and not member.bot:
 				users_to_tip.append(member)
 		if len(users_to_tip) < 1:
 			raise util.TipBotException("no_valid_recipient")
@@ -364,7 +454,8 @@ async def tip_task(message):
 		users_to_tip = list(set(users_to_tip))
 		# Make sure this user has enough in their balance to complete this tip
 		required_amt = amount * len(users_to_tip)
-		balance = await wallet.get_balance_by_id(message.author.id)
+		user = db.get_user_by_id(message.author.id)
+		balance = await wallet.get_balance(user)
 		user_balance = balance['available']
 		if user_balance < required_amt:
 			await add_x_reaction(message)
@@ -373,7 +464,7 @@ async def tip_task(message):
 		# Distribute tips
 		for member in users_to_tip:
 			uid = str(uuid.uuid4())
-			actual_amt = await wallet.make_transaction_to_user(message.author.id, amount, member.id, member.name, uid)
+			actual_amt = await wallet.make_transaction_to_user(user, amount, member.id, member.name, uid)
 			# Something went wrong, tip didn't go through
 			if actual_amt == 0:
 				required_amt -= amount
@@ -381,6 +472,8 @@ async def tip_task(message):
 				await post_dm(member, TIP_RECEIVED_TEXT, actual_amt, message.author.name)
 		# Post message reactions
 		await react_to_message(message, required_amt)
+		# Update tip stats
+		db.update_tip_stats(user, required_amt)
 	except util.TipBotException as e:
 		if e.error_type == "amount_not_found" or e.error_type == "usage_error":
 			await post_dm(message.author, TIP_USAGE)
@@ -389,12 +482,9 @@ async def tip_task(message):
 		else:
 			await post_response(message, TIP_ERROR_TEXT)
 
-@client.command(pass_context=True)
-async def bansplit(ctx):
-	if not ctx.message.channel.is_private:
-		asyncio.get_event_loop().create_task(tipsplit_task(ctx.message))
-
-async def tipsplit_task(message):
+async def tipsplit(message):
+	if message.channel.is_private:
+		return
 	try:
 		amount = find_amount(message.content)
 		# Make sure amount is valid and at least 1 user is mentioned
@@ -406,32 +496,36 @@ async def tipsplit_task(message):
 		users_to_tip = []
 		for member in message.mentions:
 			# Disregard mentions of self and exempt users
-			if member.id not in settings.exempt_users and member.id != message.author.id:
+			if member.id not in settings.exempt_users and member.id != message.author.id and not db.is_banned(member.id) and not member.bot:
 				users_to_tip.append(member)
 		if len(users_to_tip) < 1:
 			raise util.TipBotException("no_valid_recipient")
 		# Remove duplicates
 		users_to_tip = list(set(users_to_tip))
 		# Make sure user has enough in their balance
-		balance = await wallet.get_balance_by_id(message.author.id)
+		user = db.get_user_by_id(message.author.id)
+		if user is None:
+			return
+		balance = await wallet.get_balance(user)
 		user_balance = balance['available']
 		if user_balance < amount:
-			await add_x_reaction(ctx.message)
+			await add_x_reaction(message)
 			await post_dm(message.author, INSUFFICIENT_FUNDS_TEXT)
 			return
 		# Distribute tips
 		tip_amount = int(amount / len(users_to_tip))
 		# Recalculate amount as it may be different since truncating decimal
-		amount = tip_amount * len(users_to_tip)
+		real_amount = tip_amount * len(users_to_tip)
 		for member in users_to_tip:
 			uid = str(uuid.uuid4())
-			actual_amt = await wallet.make_transaction_to_user(message.author.id, tip_amount, member.id, member.name, uid)
+			actual_amt = await wallet.make_transaction_to_user(user, tip_amount, member.id, member.name, uid)
 			# Tip didn't go through
 			if actual_amt == 0:
 				amount -= tip_amount
 			else:
 				await post_dm(member, TIP_RECEIVED_TEXT, tip_amount, message.author.name)
 		await react_to_message(message, amount)
+		db.update_tip_stats(user, real_amount)
 	except util.TipBotException as e:
 		if e.error_type == "amount_not_found" or e.error_type == "usage_error":
 			await post_dm(message.author, TIPSPLIT_USAGE)
@@ -442,16 +536,12 @@ async def tipsplit_task(message):
 		else:
 			await post_response(message, TIP_ERROR_TEXT)
 
-@client.command(pass_context=True)
-async def rain(ctx):
-	if not ctx.message.channel.is_private:
-		asyncio.get_event_loop().create_task(rain_task(ctx.message))
-
-async def rain_task(message):
+async def rain(message):
+	if message.channel.is_private:
+		return
 	try:
 		amount = find_amount(message.content)
 		if amount < RAIN_MINIMUM:
-			await add_x_reaction(message)
 			raise util.TipBotException("usage_error")
 		# Create tip list
 		users_to_tip = []
@@ -461,26 +551,29 @@ async def rain_task(message):
 		for auid in active_user_ids:
 			dmember = message.server.get_member(auid)
 			if dmember is not None and (dmember.status == discord.Status.online or dmember.status == discord.Status.idle):
-				if dmember.id not in settings.exempt_users and dmember.id != message.author.id:
+				if dmember.id not in settings.exempt_users and dmember.id != message.author.id and not db.is_banned(dmember.id) and not dmember.bot:
 					users_to_tip.append(dmember)
 		users_to_tip = list(set(users_to_tip))
 		if len(users_to_tip) < 1:
 			raise util.TipBotException("no_valid_recipient")
 		if int(amount / len(users_to_tip)) < 1:
 			raise util.TipBotException("invalid_tipsplit")
-		balance = await wallet.get_balance_by_id(message.author.id)
+		user = db.get_user_by_id(message.author.id)
+		if user is None:
+			return
+		balance = await wallet.get_balance(user)
 		user_balance = balance['available']
 		if user_balance < amount:
 			await add_x_reaction(message)
-			await post_dm(ctx.message.author, INSUFFICIENT_FUNDS_TEXT)
+			await post_dm(message.author, INSUFFICIENT_FUNDS_TEXT)
 			return
 		# Distribute Tips
 		tip_amount = int(amount / len(users_to_tip))
 		# Recalculate actual tip amount as it may be smaller now
-		#amount = tip_amount * len(users_to_tip) # nvm lets not short change reactions
+		real_amount = tip_amount * len(users_to_tip)
 		for member in users_to_tip:
 			uid = str(uuid.uuid4())
-			actual_amt = await wallet.make_transaction_to_user(message.author.id, tip_amount, member.id, member.name, uid)
+			actual_amt = await wallet.make_transaction_to_user(user, tip_amount, member.id, member.name, uid)
 			# Tip didn't go through for some reason
 			if actual_amt == 0:
 				amount -= tip_amount
@@ -489,7 +582,9 @@ async def rain_task(message):
 
 		# Message React
 		await react_to_message(message, amount)
-		await client.add_reaction(message, '\U0001F327') # Sweat Drops
+		await client.add_reaction(message, '\:bananorain:430826677543895050') # Sweat Drops
+		db.update_tip_stats(user, real_amount)
+		db.mark_user_active(user)
 	except util.TipBotException as e:
 		if e.error_type == "amount_not_found" or e.error_type == "usage_error":
 			await post_dm(message.author, RAIN_USAGE)
@@ -500,71 +595,84 @@ async def rain_task(message):
 		else:
 			await post_response(message, TIP_ERROR_TEXT)
 
-@client.command(pass_context=True, aliases=['entergiveaway'])
-async def enter(ctx):
-	asyncio.get_event_loop().create_task(entergiveaway_task(ctx.message))
-
-async def entergiveaway_task(message):
+async def entergiveaway(message):
 	if not db.is_active_giveaway():
-		await add_x_reaction(message)
+		db.ticket_spam_check(message.author.id)
 		await post_dm(message.author, TIPGIVEAWAY_NO_ACTIVE)
 		return
-	entered = db.add_contestant(message.author.id)
-	if entered:
-		await wallet.create_or_fetch_user(message.author.id, message.author.name)
-		await post_dm(message.author, ENTER_ADDED)
-		await client.add_reaction(message, '\:tick:425880814266351626') # Check Mark
+	giveaway = db.get_giveaway()
+	if giveaway.entry_fee == 0:
+		spam = db.ticket_spam_check(message.author.id,increment=False)
+		entered = db.add_contestant(message.author.id, banned=spam)
+		if entered:
+			if not spam:
+				await wallet.create_or_fetch_user(message.author.id, message.author.name)
+			await post_dm(message.author, ENTER_ADDED)
+		else:
+			await post_dm(message.author, ENTER_DUP)
 	else:
-		await add_x_reaction(message)
-		await post_dm(message.author, ENTER_DUP)
+		if db.contestant_exists(message.author.id):
+			await post_dm(message.author, ENTER_DUP)
+		else:
+			await tipgiveaway(message,ticket=True)
 
-@client.command(pass_context=True, aliases=['sponsorgiveaway'])
-async def giveaway(ctx):
-	if not ctx.message.channel.is_private:
-		asyncio.get_event_loop().create_task(givearai_task(ctx.message))
-
-async def givearai_task(message):
+async def givearai(message):
+	if message.channel.is_private:
+		return
 	try:
 		# One giveaway at a time
 		if db.is_active_giveaway():
 			await post_dm(message.author, GIVEAWAY_EXISTS)
 			return
-		amount = find_amount(message.content)
+		split_content = message.content.split(' ')
+		if len(split_content) > 2:
+			amount = find_amount(split_content[1])
+			fee = find_amount(split_content[2])
+		else:
+			raise util.TipBotException("usage_error")
 		if amount < GIVEAWAY_MINIMUM:
 			raise util.TipBotException("usage_error")
-		balance = await wallet.get_balance_by_id(message.author.id)
+		max_fee = int(0.05 * amount)
+		if fee > max_fee:
+			await post_response(message, GIVEAWAY_MAX_FEE)
+			return
+		if 0 > fee:
+			raise util.TipBotException("usage_error")
+		user = db.get_user_by_id(message.author.id)
+		if user is None:
+			return
+		balance = await wallet.get_balance(user)
 		user_balance = balance['available']
 		if user_balance < amount:
 			await add_x_reaction(message)
 			await post_dm(message.author, INSUFFICIENT_FUNDS_TEXT)
 			return
-		if amount >= 50000:
-			duration = 60
-		else:
-			duration = GIVEAWAY_DURATION
-		end_time = datetime.datetime.now() + datetime.timedelta(minutes=duration)
+		end_time = datetime.datetime.now() + datetime.timedelta(minutes=GIVEAWAY_DURATION)
 		nano_amt = amount
-		source_id = message.author.id
-		source_address = db.get_address(source_id)
-		giveaway = db.start_giveaway(message.author.id, message.author.name, nano_amt, end_time, message.channel.id)
+		giveaway = db.start_giveaway(message.author.id, message.author.name, nano_amt, end_time, message.channel.id, entry_fee=fee)
 		uid = str(uuid.uuid4())
-		await wallet.make_transaction_to_address(source_id, source_address, amount, None, uid, giveaway_id=giveaway.id,update_stats=True)
-		await post_response(message, GIVEAWAY_STARTED, message.author.name, nano_amt)
+		await wallet.make_transaction_to_address(user, amount, None, uid, giveaway_id=giveaway.id)
+		if fee > 0:
+			await post_response(message, GIVEAWAY_STARTED_FEE, message.author.name, nano_amt, fee, fee)
+		else:
+			await post_response(message, GIVEAWAY_STARTED, message.author.name, nano_amt)
 		asyncio.get_event_loop().create_task(start_giveaway_timer())
+		db.update_tip_stats(user, amount)
+		db.add_contestant(message.author.id, override_ban=True)
 	except util.TipBotException as e:
 		if e.error_type == "amount_not_found" or e.error_type == "usage_error":
 			await post_dm(message.author, GIVEAWAY_USAGE)
 
-@client.command(pass_context=True)
-async def donate(ctx):
-	if not ctx.message.channel.is_private:
-		asyncio.get_event_loop().create_task(tipgiveaway_task(ctx.message))
-
-async def tipgiveaway_task(message):
+async def tipgiveaway(message, ticket=False):
+	if message.channel.is_private:
+		return
 	try:
 		giveaway = db.get_giveaway()
 		amount = find_amount(message.content)
-		balance = await wallet.get_balance_by_id(message.author.id)
+		user = db.get_user_by_id(message.author.id)
+		if user is None:
+			return
+		balance = await wallet.get_balance(user)
 		user_balance = balance['available']
 		if user_balance < amount:
 			await add_x_reaction(message)
@@ -574,41 +682,64 @@ async def tipgiveaway_task(message):
 		if giveaway is not None:
 			db.add_tip_to_giveaway(nano_amt)
 			giveawayid = giveaway.id
+			fee = giveaway.entry_fee
 		else:
 			giveawayid = -1
-		source_id = message.author.id
-		source_address = db.get_address(source_id)
+			fee = TIPGIVEAWAY_AUTO_ENTRY
+		contributions = amount + db.get_tipgiveaway_contributions(message.author.id, giveawayid)
+		if ticket:
+			if fee > contributions:
+				owed = fee - contributions
+				await post_dm(message.author, "You were NOT entered into the giveaway! The fee for this giveaway is %d BANANO, you may enter using `%senter %d`", owed, COMMAND_PREFIX, owed)
+				return
 		uid = str(uuid.uuid4())
-		await wallet.make_transaction_to_address(source_id, source_address, amount, None, uid, giveaway_id=giveawayid,update_stats=True)
-		await react_to_message(message, amount)
-		# Add user to next giveaway if sum is >= amount
-		if amount >= settings.giveaway_auto_amt:
-			db.add_contestant(message.author.id)
+		await wallet.make_transaction_to_address(user, amount, None, uid, giveaway_id=giveawayid)
+		if not ticket:
+			await react_to_message(message, amount)
+		# If eligible, add them to giveaway
+		if contributions >= fee:
+			db.mark_user_active(user)
+			entered = db.add_contestant(message.author.id, override_ban=True)
+			if entered:
+				if giveaway is None:
+					await post_response(message, TIPGIVEAWAY_ENTERED_FUTURE)
+				else:
+					await post_dm(message.author, ENTER_ADDED)
+			elif ticket:
+				await post_dm(message.author, ENTER_DUP)
 		# If tip sum is >= GIVEAWAY MINIMUM then start giveaway
 		if giveaway is None:
 			tipgiveaway_sum = db.get_tipgiveaway_sum()
 			nano_amt = float(tipgiveaway_sum)
 			if tipgiveaway_sum >= GIVEAWAY_MINIMUM:
-				end_time = datetime.datetime.now() + datetime.timedelta(minutes=GIVEAWAY_DURATION)
-				db.start_giveaway(client.user.id, client.user.name, 0, end_time, message.channel.id)
-				await post_response(message, GIVEAWAY_STARTED, client.user.name, nano_amt)
+				duration = int(GIVEAWAY_DURATION / 2)
+				end_time = datetime.datetime.now() + datetime.timedelta(minutes=duration)
+				db.start_giveaway(client.user.id, client.user.name, 0, end_time, message.channel.id,entry_fee=fee)
+				await post_response(message, GIVEAWAY_STARTED_FEE, client.user.name, nano_amt, fee, fee)
 				asyncio.get_event_loop().create_task(start_giveaway_timer())
+		# Update top tip
+		db.update_tip_stats(user, amount)
 	except util.TipBotException as e:
 		if e.error_type == "amount_not_found" or e.error_type == "usage_error":
-			await post_dm(message.author, TIPGIVEAWAY_USAGE)
+			if ticket:
+				await post_dm(message.author, "Usage: `%sticket (fee)`", COMMAND_PREFIX)
+			else:
+				await post_dm(message.author, TIPGIVEAWAY_USAGE)
 
-@client.command(pass_context=True,aliases=['goldenticket'])
-async def giveawaystats(ctx):
+async def giveawaystats(message):
 	stats = db.get_giveaway_stats()
 	if stats is None:
 		for_next = GIVEAWAY_MINIMUM - db.get_tipgiveaway_sum()
-		await post_response(ctx.message, GIVEAWAY_STATS_INACTIVE, for_next)
+		await post_response(message, GIVEAWAY_STATS_INACTIVE, for_next)
 	else:
 		end = stats['end'] - datetime.datetime.now()
 		end_s = int(end.total_seconds())
 		str_delta = time.strftime("%M Minutes and %S Seconds", time.gmtime(end_s))
-		await post_response(ctx.message, GIVEAWAY_STATS, stats['entries'], stats['amount'], str_delta, stats['started_by'])
-
+		fee = stats['fee']
+		if fee == 0:
+			await post_response(message, GIVEAWAY_STATS, stats['entries'], stats['amount'], str_delta, stats['started_by'])
+		else:
+			await post_response(message, GIVEAWAY_STATS_FEE, stats['entries'], stats['amount'], str_delta, stats['started_by'], fee, fee)
 
 async def start_giveaway_timer():
 	giveaway = db.get_giveaway()
@@ -630,19 +761,18 @@ async def finish_giveaway(delay):
 		await client.send_message(channel, response)
 		await post_dm(await client.get_user_info(giveaway.winner_id), response)
 
-@client.command(pass_context=True, aliases=['ballers'])
-async def bigtippers(ctx):
+async def leaderboard(message):
 	# Check spam
 	global last_big_tippers
-	if not ctx.message.channel.is_private:
+	if not message.channel.is_private:
 		tdelta = datetime.datetime.now() - last_big_tippers
 		if SPAM_THRESHOLD > tdelta.seconds:
-			await post_response(ctx.message, TOP_SPAM, (SPAM_THRESHOLD - tdelta.seconds))
+			await post_response(message, TOP_SPAM, (SPAM_THRESHOLD - tdelta.seconds))
 			return
 		last_big_tippers = datetime.datetime.now()
 	top_users = db.get_top_users(TOP_TIPPERS_COUNT)
 	if len(top_users) == 0:
-		await post_response(ctx.message, TOP_HEADER_EMPTY_TEXT)
+		await post_response(message, TOP_HEADER_EMPTY_TEXT)
 	else:
 		# Probably a very clunky and sloppy way to format this output, I'm sure there's something better
 		response = TOP_HEADER_TEXT % TOP_TIPPERS_COUNT
@@ -666,29 +796,73 @@ async def bigtippers(ctx):
 			response += '- %.2f BANANO' % top_user['amount']
 			response += '\n'
 		response += "```"
-		await post_response(ctx.message, response)
+		await post_response(message, response)
 
-@client.command(pass_context=True, aliases=['toptits'])
-async def toptips(ctx):
+async def toptips(message):
 	# Check spam
 	global last_top_tips
-	if not ctx.message.channel.is_private:
-		tdelta = datetime.datetime.now() - last_big_tippers
+	if not message.channel.is_private:
+		tdelta = datetime.datetime.now() - last_top_tips
 		if SPAM_THRESHOLD > tdelta.seconds:
-			await post_response(ctx.message, TOPTIP_SPAM, (SPAM_THRESHOLD - tdelta.seconds))
+			await post_response(message, TOPTIP_SPAM, (SPAM_THRESHOLD - tdelta.seconds))
 			return
 		last_top_tips = datetime.datetime.now()
 	top_tips_msg = db.get_top_tips()
-	await post_response(ctx.message, top_tips_msg)
+	await post_response(message, top_tips_msg)
 
-@client.command(pass_context=True)
-async def banstats(ctx):
-	tip_stats = db.get_tip_stats(ctx.message.author.id)
+async def tipstats(message):
+	tip_stats = db.get_tip_stats(message.author.id)
 	if tip_stats is None or len(tip_stats) == 0:
-		await post_response(ctx.message, STATS_ACCT_NOT_FOUND_TEXT)
+		await post_response(message, STATS_ACCT_NOT_FOUND_TEXT)
 		return
-	await post_response(ctx.message, STATS_TEXT, tip_stats['rank'], tip_stats['total'], tip_stats['average'])
+	await post_response(message, STATS_TEXT, tip_stats['rank'], tip_stats['total'], tip_stats['average'],tip_stats['top'])
 
+async def tipban(message):
+	for member in message.mentions:
+		if db.ban_user(member.id):
+			await post_dm(message.author, BAN_SUCCESS, member.name)
+		else:
+			await post_dm(message.author, BAN_DUP, member.name)
+
+async def tipunban(message):
+	for member in message.mentions:
+		if db.unban_user(member.id):
+			await post_dm(message.author, UNBAN_SUCCESS, member.name)
+		else:
+			await post_dm(message.author, UNBAN_DUP, member.name)
+
+async def arrest(message):
+	if len(message.mentions) > 0:
+		jail = discord.utils.get(message.server.roles,name='BANANO JAIL')
+		for member in message.mentions:
+			await client.add_roles(member, jail)
+			await post_response(message, RIGHTS, mention_id=member.id)
+		await client.add_reaction(message, '\U0001f694')
+
+async def release(message):
+	if len(message.mentions) > 0:
+		jail = discord.utils.get(message.server.roles,name='BANANO JAIL')
+		for member in message.mentions:
+			await client.remove_roles(member, jail)
+			await post_response(message, RELEASE, mention_id=member.id)
+
+async def citizenship(message):
+	if len(message.mentions) > 0:
+		citizenship = discord.utils.get(message.server.roles,name='Citizens')
+		for member in message.mentions:
+			await client.add_roles(member, citizenship)
+			await post_response(message, CITIZENSHIP, mention_id=member.id)
+		await client.add_reaction(message, '\:bananorepublic:429691019538202624')
+
+async def deport(message):
+	if len(message.mentions) > 0:
+		citizenship = discord.utils.get(message.server.roles,name='Citizens')
+		for member in message.mentions:
+			await client.remove_roles(member, citizenship)
+			await post_response(message, DEPORT, mention_id=member.id)
+			await client.add_reaction(message, '\U0001F6F3')
+
+			"""
 @client.command(pass_context=True)
 @commands.has_any_role(*settings.admin_roles)
 async def settiptotal(ctx, amount: float = -1.0, user: discord.Member = None):
@@ -704,6 +878,7 @@ async def settipcount(ctx, cnt: int = -1, user: discord.Member = None):
 		await post_response(ctx.message, SET_COUNT_USAGE)
 		return
 	db.update_tip_count(user.id, cnt)
+"""
 
 ### Utility Functions
 def get_qr_url(text):
@@ -726,10 +901,12 @@ def find_amount(input_text):
 		raise util.TipBotException("amount_not_found")
 
 ### Re-Used Discord Functions
-async def post_response(message, template, *args, incl_mention=True):
+async def post_response(message, template, *args, incl_mention=True, mention_id=None):
+	if mention_id is None:
+		mention_id = message.author.id
 	response = template % tuple(args)
 	if not message.channel.is_private and incl_mention:
-		response = "<@" + message.author.id + "> \n" + response
+		response = "<@" + mention_id + "> \n" + response
 	logger.info("sending response: '%s' to message: %s", response, message.content)
 	asyncio.sleep(0.05) # Slight delay to avoid discord bot responding above commands
 	return await client.send_message(message.channel, response)
@@ -748,6 +925,11 @@ async def post_edit(message, template, *args):
 	response = template % tuple(args)
 	return await client.edit_message(message, response)
 
+async def remove_message(message):
+	client_member = message.server.get_member(client.user.id)
+	if client_member.permissions_in(message.channel).manage_messages:
+		await client.delete_message(message)
+
 async def add_x_reaction(message):
 	await client.add_reaction(message, '\U0000274C') # X
 	return
@@ -756,6 +938,7 @@ async def react_to_message(message, amount):
 	if amount > 0:
 		await client.add_reaction(message, '\:tip:425878628119871488') # TIP mark
 		await client.add_reaction(message, '\:tick:425880814266351626') # check mark
+
 
 # Start the bot
 client.run(settings.discord_bot_token)

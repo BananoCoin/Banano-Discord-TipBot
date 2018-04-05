@@ -1,6 +1,6 @@
-# NANO Tip Bot
+# BANANO Tip Bot
 
-NANO Tip Bot is an open source, free to use nano tip bot for discord.
+BANANO Tip Bot is an open source, free to use nano tip bot for discord.
 
 Intended to operate in a similar manner to the old tip bot on nano's discord server, with some enhancements.
 
@@ -21,7 +21,7 @@ nohup python3 bot.py &
 ## Dependencies (install using pip)
 
 - Python 3.5+
-- NANO Node v10+
+- BANANO Node v10+
 - `setuptools`
 - `discord`
 - `peewee`
