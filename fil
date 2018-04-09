@@ -1,0 +1,93 @@
+From 3aedad012d58d4c34e258b6dd16ef813001967d3 Mon Sep 17 00:00:00 2001
+From: Brandon Berhent <bbedward@gmail.com>
+Date: Mon, 9 Apr 2018 19:53:54 +0000
+Subject: [PATCH] Change tip_count to Integer instead of BigInteger
+
+---
+ bot.py |  8 +++-----
+ db.py  | 17 ++++++-----------
+ 2 files changed, 9 insertions(+), 16 deletions(-)
+
+diff --git a/bot.py b/bot.py
+index ec33c49..a91747c 100644
+--- a/bot.py
++++ b/bot.py
+@@ -231,10 +231,8 @@ def run(self):
+ 					source_id=src_usr.user_id
+ 				if trg_usr is not None:
+ 					target_id=trg_usr.user_id
+-				db.mark_transaction_sent(uid, pending_delta, source_id, target_id)
+ 				logger.debug("RPC Send")
+ 				try:
+-
+ 					wallet_output = wallet.communicate_wallet(wallet_command)
+ 				except Exception as e:
+ 					logger.exception(e)
+@@ -242,7 +240,7 @@ def run(self):
+ 				logger.debug("RPC Response")
+ 				if 'block' in wallet_output:
+ 					txid = wallet_output['block']
+-					db.mark_transaction_processed(uid, txid)
++					db.mark_transaction_processed(uid, pending_delta, source_id,target_id,tranid=txid)
+ 					logger.info('TX processed. UID: %s, TXID: %s', uid, txid)
+ 					if target_id is None:
+ 						withdrawq.put({'user_id':source_id, 'txid':txid})
+@@ -250,7 +248,7 @@ def run(self):
+ 					# Not sure what happen but we'll retry a few times
+ 					if attempts >= MAX_TX_RETRIES:
+ 						logger.info("Max Retires Exceeded for TX UID: %s", uid)
+-						db.mark_transaction_processed(uid, 'invalid')
++						db.mark_transaction_processed(uid, pending_delta, source_id,target_id, tranid='invalid')
+ 					else:
+ 						db.inc_tx_attempts(uid)
+ 			if self.stopped():
+diff --git a/db.py b/db.py
+index b7aad43..d3f76cb 100644
+--- a/db.py
++++ b/db.py
+@@ -16,7 +16,7 @@
+ # How many words messages must contain
+ LAST_MSG_RAIN_WORDS = 3
+ 
+-db = SqliteQueueDatabase('nanotipbot.db')
++db = SqliteDatabase('nanotipbot.db')
+ 
+ logger = util.get_logger("db")
+ 
+@@ -446,10 +446,11 @@ def get_top_tips():
+ 
+ 	return result
+ 
+-# Marks TX as sent
+-def mark_transaction_sent(uuid, amt, source_id, target_id=None):
++# Marks TX as processed
++def mark_transaction_processed(uuid, amt, source_id, target_id=None, tranid=None):
+ 	tu = (Transaction.update(
+-			processed = True
++			processed = True,
++			tran_id = tranid
+ 		    ).where(
+ 			(Transaction.uid == uuid) &
+ 			(Transaction.processed == False)
+@@ -459,12 +460,6 @@ def mark_transaction_sent(uuid, amt, source_id, target_id=None):
+ 		if target_id is not None:
+ 			update_pending(target_id, receive=amt)
+ 
+-# This adds block to our TX
+-def mark_transaction_processed(uuid, tranid):
+-	(Transaction.update(
+-		tran_id = tranid
+-	).where(Transaction.uid == uuid)).execute()
+-
+ # Return false if last message was < LAST_MSG_TIME
+ # If > LAST_MSG_TIME, return True and update the user
+ # Also return true, if user does not have a tip bot acct yet
+@@ -542,7 +537,7 @@ class User(Model):
+ 	tipped_amount = FloatField(default=0.0, constraints=[SQL('DEFAULT 0.0')])
+ 	pending_receive = IntegerField(default=0, constraints=[SQL('DEFAULT 0')])
+ 	pending_send = IntegerField(default=0, constraints=[SQL('DEFAULT 0')])
+-	tip_count = BigIntegerField(default=0, constraints=[SQL('DEFAULT 0')])
++	tip_count = IntegerField(default=0, constraints=[SQL('DEFAULT 0')])
+ 	created = DateTimeField(default=datetime.datetime.now(), constraints=[SQL('DEFAULT CURRENT_TIMESTAMP')])
+ 	last_msg = DateTimeField(default=datetime.datetime.now(), constraints=[SQL('DEFAULT CURRENT_TIMESTAMP')])
+ 	last_msg_rain = DateTimeField(default=datetime.datetime.now(), constraints=[SQL('DEFAULT CURRENT_TIMESTAMP')])
