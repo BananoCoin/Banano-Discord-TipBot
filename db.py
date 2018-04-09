@@ -1,5 +1,8 @@
+import re
 import datetime
 import util
+import settings
+from random import randint
 from peewee import *
 from playhouse.sqliteq import SqliteQueueDatabase
 
@@ -13,7 +16,7 @@ LAST_MSG_RAIN_DELTA = 60
 # How many words messages must contain
 LAST_MSG_RAIN_WORDS = 3
 
-db = SqliteQueueDatabase('bananodiscord.db')
+db = SqliteQueueDatabase('discord.db')
 
 logger = util.get_logger("db")
 
@@ -52,10 +55,18 @@ def get_address(user_id):
 		return user.wallet_address
 
 def get_top_users(count):
-	users = User.select().where(User.tipped_amount > 0).order_by(User.tipped_amount.desc()).limit(count)
+	users = User.select().where((User.tipped_amount > 0) & (User.stats_ban == False)).order_by(User.tipped_amount.desc()).limit(count)
 	return_data = []
 	for idx, user in enumerate(users):
 		return_data.append({'index': idx + 1, 'name': user.user_name, 'amount': user.tipped_amount})
+	return return_data
+
+def get_giveaway_winners(count):
+	winners = Giveaway.select().where((Giveaway.active == False) & (Giveaway.winner_id.is_null(False))).order_by(Giveaway.end_time.desc()).limit(count)
+	return_data = []
+	for idx, winner in enumerate(winners):
+		user = get_user_by_id(winner.winner_id)
+		return_data.append({'index': idx + 1, 'name': user.user_name, 'amount': winner.amount + winner.tip_amount})
 	return return_data
 
 def get_tip_stats(user_id):
@@ -63,79 +74,113 @@ def get_tip_stats(user_id):
 	if user is None:
 		return None
 	rank = User.select().where(User.tipped_amount > user.tipped_amount).count() + 1
-	if user.tip_count == 0:
+	if not user.stats_ban:
+		tipped_amount = user.tipped_amount
+		tip_count = user.tip_count
+		top_tip = user.top_tip
+	else:
+		tipped_amount = 0
+		tip_count = 0
+		top_tip = 0
+	if tip_count == 0:
 		average = 0
 	else:
-		average = user.tipped_amount / user.tip_count
-	return {'rank':rank, 'total':user.tipped_amount, 'average':average,'top':float(user.top_tip)}
+		average = tipped_amount / tip_count
+	return {'rank':rank, 'total':tipped_amount, 'average':average,'top':float(top_tip) / 1000000}
 
 # Update tip stats
-def update_tip_stats(user, tip):
-	if user is not None:
-		user.tipped_amount += tip
-		user.tip_count += 1
-		if tip > int(float(user.top_tip)):
-			user.top_tip = tip
-			user.top_tip_ts=datetime.datetime.now()
-		user.save()
+def update_tip_stats(user, tip, rain=False, giveaway=False):
+	(User.update(
+		tipped_amount=(User.tipped_amount + (tip / 1000000)),
+		tip_count = User.tip_count + 1
+		).where(User.user_id == user.user_id)
+		).execute()
+	if tip > int(float(user.top_tip)):
+		(User.update(
+			top_tip = tip,
+			top_tip_ts = datetime.datetime.now()
+			).where(User.user_id == user.user_id)
+			).execute()
+	if rain:
+		(User.update(
+			rain_amount = User.rain_amount + (tip / 1000000)
+			)
+			.where(User.user_id == user.user_id)
+		).execute()
+	elif giveaway:
+		(User.update(
+			giveaway_amount = User.giveaway_amount + (tip)
+			)
+			.where(User.user_id == user.user_id)
+		).execute()
+
+def update_tip_total(user_id, new_total):
+	User.update(tipped_amount = new_total).where(User.user_id == user_id).execute()
 	return
 
-def update_pending(user):
-	if user is not None:
-		pendings = PendingBalanceUpdate.select().where(PendingBalanceUpdate.user_id == user.user_id)
-		if pendings.count() > 0:
-			for p in pendings:
-				user.pending_send += p.pending_send
-				user.pending_receive += p.pending_receive
-				p.delete_instance()
-			user.save()
-		user = get_user_by_id(user.user_id)
+def update_tip_count(user_id, new_count):
+	User.update(tip_count = new_count).where(User.user_id == user_id).execute()
+	return
 
-def queue_pending(user_id, send=0, receive=0):
-	pbu = PendingBalanceUpdate(user_id=user_id,
-			     pending_send=send,
-			     pending_receive = receive
-			    )
-	pbu.save()
-	return pbu
+def update_pending(user_id, send=0, receive=0):
+	return (User.update(
+			pending_send = (User.pending_send + send),
+			pending_receive = (User.pending_receive + receive)
+		    ).where(User.user_id == user_id)
+		).execute()
 
 def create_user(user_id, user_name, wallet_address):
 	user = User(user_id=user_id,
 		    user_name=user_name,
 		    wallet_address=wallet_address,
-		    tipped_amount=0.0,
-		    wallet_balance=0.0,
-		    pending_receive=0.0,
-		    pending_send=0.0,
-		    tip_count=0,
-		    created=datetime.datetime.now(),
-		    last_msg=datetime.datetime.now(),
-		    last_msg_rain=datetime.datetime.now(),
-		    last_msg_count=0,
-		    top_tip='0',
-		    top_tip_ts=datetime.datetime.now(),
-		    ticket_count=0
 		    )
 	user.save()
 	return user
 
 ### Transaction Stuff
 def create_transaction(src_usr, uuid, to_addr, amt, target_id=None, giveaway_id=0):
+	# Increment amount of giveaway TX if user has already donated to giveaway
+	if giveaway_id != 0:
+		try:
+			giveawayTx = (Transaction.select()
+						 .where(
+							(Transaction.source_address == src_usr.wallet_address) &
+							(Transaction.giveawayid == giveaway_id)
+							)
+				     ).get()
+			update = (Transaction.update(amount = Transaction.amount.cast('integer') + amt)
+				    	.where(Transaction.id == giveawayTx.id)
+				 ).execute()
+			if update > 0:
+				update_pending(src_usr.user_id, send=amt)
+			return
+		except Transaction.DoesNotExist:
+			pass
+
 	tx = Transaction(uid=uuid,
 			 source_address=src_usr.wallet_address,
 			 to_address=to_addr,
 			 amount=amt,
-			 processed=False,
-			 created=datetime.datetime.now(),
-			 tran_id='',
-			 attempts=0,
 			 giveawayid=giveaway_id
 			)
 	tx.save()
-	queue_pending(src_usr.user_id, send=amt)
+	update_pending(src_usr.user_id, send=amt)
 	if target_id is not None:
-		queue_pending(target_id, receive=amt)
+		update_pending(target_id, receive=amt)
+	else:
+		update_last_withdraw(src_usr.user_id)
 	return tx
+
+def update_last_withdraw(user_id):
+	User.update(last_withdraw=datetime.datetime.now()).where(User.user_id == user_id).execute()
+
+def get_last_withdraw_delta(user_id):
+	try:
+		user = User.select(User.last_withdraw).where(User.user_id == user_id).get()
+		delta = (datetime.datetime.now() - user.last_withdraw).total_seconds()
+		return delta
+	except User.DoesNotExist:
+		return None
 
 def get_unprocessed_transactions():
 	# We don't simply return the txs list cuz that causes issues with database locks in the thread
@@ -150,12 +195,14 @@ def process_giveaway_transactions(giveaway_id, winner_user_id):
 	winner = get_user_by_id(winner_user_id);
 	pending_receive = 0
 	for tx in txs:
-		tx.to_address = winner.wallet_address
-		tx.giveawayid = 0
 		pending_receive += int(tx.amount)
-		tx.save()
-	queue_pending(winner_user_id, receive=pending_receive)
-
+	update_pending(winner_user_id, receive=pending_receive)
+	(Transaction.update(
+			to_address = winner.wallet_address,
+			giveawayid = 0
+		    ).where(
+			(Transaction.giveawayid == giveaway_id)
+	)).execute()
 # Start Giveaway
 def start_giveaway(user_id, user_name, amount, end_time, channel, entry_fee = 0):
 	giveaway = Giveaway(started_by=user_id,
@@ -181,16 +228,6 @@ def start_giveaway(user_id, user_name, amount, end_time, channel, entry_fee = 0)
 	giveaway.save()
 	return giveaway
 
-def update_giveaway_transactions(giveawayid):
-	tip_sum = 0
-	txs = Transaction.select().where(Transaction.giveawayid == -1)
-	for tx in txs:
-		tx.giveawayid = giveawayid
-		tip_sum += int(tx.amount)
-		tx.save()
-
-	return float(tip_sum)
-
 def get_giveaway():
 	try:
 		giveaway = Giveaway.get(active=True)
@@ -198,11 +235,25 @@ def get_giveaway():
 	except:
 		return None
 
+def update_giveaway_transactions(giveawayid):
+	tip_sum = 0
+	txs = Transaction.select().where(Transaction.giveawayid == -1)
+	for tx in txs:
+		tip_sum += int(tx.amount)
+	(Transaction.update(
+			giveawayid = giveawayid
+		    ).where(
+			(Transaction.giveawayid == -1)
+	)).execute()
+
+	return float(tip_sum)/ 1000000
+
 def add_tip_to_giveaway(amount):
-	giveaway = get_giveaway()
-	if giveaway is not None:
-		giveaway.tip_amount += amount
-		giveaway.save()
+	giveawayupdt = (Giveaway
+				.update(
+					tip_amount = (Giveaway.tip_amount + amount)
+				).where(Giveaway.active == True)
+			).execute()
 
 def get_tipgiveaway_sum():
 	tip_sum = 0
@@ -232,14 +283,50 @@ def ban_user(user_id):
 	ban.save()
 	return True
 
+def statsban_user(user_id):
+	banned = User.update(stats_ban = True).where(User.user_id == user_id).execute()
+	return banned > 0
+
 def unban_user(user_id):
 	deleted = BannedUser.delete().where(BannedUser.user_id == user_id).execute()
 	return deleted > 0
 
+def statsunban_user(user_id):
+	unbanned = User.update(stats_ban = False).where(User.user_id == user_id).execute()
+	return unbanned > 0
+
+def get_banned():
+	banned = BannedUser.select(BannedUser.user_id)
+	users = User.select(User.user_name).where(User.user_id.in_(banned))
+	if users.count() == 0:
+		return "```Nobody Banned```"
+	ret = "```"
+	for idx,user in enumerate(users):
+		ret += "%d: %s\n" % (idx+1,user.user_name)
+	ret += "```"
+	return ret
+
+def get_statsbanned():
+	statsbanned = User.select().where(User.stats_ban == True)
+	if statsbanned.count() == 0:
+		return "```No stats bans```"
+	ret = "```"
+	for idx,user in enumerate(statsbanned):
+		ret += "%d: %s\n" % (idx+1,user.user_name)
+	ret += "```"
+	return ret
+
 # Returns winning user
 def finish_giveaway():
-	picker_query = Contestant.select().where(Contestant.banned == False).order_by(fn.Random())
-	winner = get_user_by_id(picker_query.get().user_id)
+	contestants = Contestant.select().where(Contestant.banned == False).order_by(Contestant.user_id)
+	offset = randint(0, contestants.count() - 1)
+	i = 0
+	for c in contestants:
+		if offset == i:
+			winner = get_user_by_id(c.user_id)
+			break
+		else:
+			i += 1
 	Contestant.delete().execute()
 	giveaway = Giveaway.get(active=True)
 	giveaway.active=False
@@ -264,6 +351,23 @@ def add_contestant(user_id, banned=False, override_ban=False):
 		contestant.save()
 		return True
 
+def get_ticket_status(user_id):
+	try:
+		giveaway = Giveaway.select().where(Giveaway.active==True).get()
+		if contestant_exists(user_id):
+			return "You are already entered into the giveaway!"
+		fee = giveaway.entry_fee
+		contributions = get_tipgiveaway_contributions(user_id, giveawayid=giveaway.id)
+		cost = fee - contributions
+		return_str = ("You do not have a ticket to the current giveaway!\n" +
+				"Giveaway fee: %d\n" +
+				"Your donations: %d\n" +
+				"Your ticket cost: %d\n\n" +
+				"You may enter using `%sticket %d`") % (fee, contributions, cost, settings.command_prefix, cost)
+		return return_str
+	except Giveaway.DoesNotExist:
+		return "There are no active giveaways"
+
 def contestant_exists(user_id):
 	c = Contestant.select().where(Contestant.user_id == user_id).count()
 	return c > 0
@@ -283,7 +387,10 @@ def ticket_spam_check(user_id, increment=True):
 		return True
 	if increment:
 		user.ticket_count += 1
-		user.save()
+		(User.update(
+			ticket_count = (User.ticket_count + 1)
+		     ).where(User.user_id == user_id)
+		).execute()
 	return user.ticket_count >= 3
 
 # Gets giveaway stats
@@ -308,9 +415,9 @@ def get_top_tips():
 	month_str = dt.strftime("%B")
 	month_num = "%02d" % dt.month # Sqlite uses 2 digit month (with leading 0)
 	amount = fn.MAX(User.top_tip.cast('integer')).alias('amount')
-	top_24h = User.select(amount, User.user_name).where(User.top_tip_ts > past_dt).order_by(User.top_tip_ts).limit(1)
-	top_month = User.select(amount, User.user_name).where(fn.strftime("%m", User.top_tip_ts) == month_num).order_by(User.top_tip_ts).limit(1)
-	top_at = User.select(amount, User.user_name).order_by(User.top_tip_ts).limit(1)
+	top_24h = User.select(amount, User.user_name).where((User.top_tip_ts > past_dt) & (User.stats_ban == False)).order_by(User.top_tip_ts).limit(1)
+	top_month = User.select(amount, User.user_name).where((fn.strftime("%m", User.top_tip_ts) == month_num) & (User.stats_ban == False)).order_by(User.top_tip_ts).limit(1)
+	top_at = User.select(amount, User.user_name).where(User.stats_ban == False).order_by(User.top_tip_ts).limit(1)
 	# Formatted output
 	user24h = None
 	monthuser = None
@@ -341,20 +448,22 @@ def get_top_tips():
 
 # Marks TX as sent
 def mark_transaction_sent(uuid, amt, source_id, target_id=None):
-	tx = Transaction.get(uid=uuid)
-	if tx is not None and not tx.processed:
-		tx.processed=True
-		tx.save()
-		queue_pending(source_id,send=amt)
+	tu = (Transaction.update(
+			processed = True
+		    ).where(
+			(Transaction.uid == uuid) &
+			(Transaction.processed == False)
+	)).execute()
+	if tu > 0:
+		update_pending(source_id,send=amt)
 		if target_id is not None:
-			queue_pending(target_id, receive=amt)
+			update_pending(target_id, receive=amt)
 
 # This adds block to our TX
 def mark_transaction_processed(uuid, tranid):
-	tx = Transaction.get(uid=uuid)
-	if tx is not None:
-		tx.tran_id=tranid
-		tx.save()
+	(Transaction.update(
+		tran_id = tranid
+	).where(Transaction.uid == uuid)).execute()
 
 # Return false if last message was < LAST_MSG_TIME
 # If > LAST_MSG_TIME, return True and update the user
@@ -372,40 +481,79 @@ def last_msg_check(user_id, content, is_private):
 	return True
 
 def update_last_msg(user, delta, content, is_private):
-	words = len(content.split(' '))
+	content_adjusted = unicode_strip(content)
+	words = content_adjusted.split(' ')
+	adjusted_count = 0
+	prev_len = 0
+	for word in words:
+		word = word.strip()
+		cur_len = len(word)
+		if cur_len > 0:
+			if word.startswith(":") and word.endswith(":"):
+				continue
+			if prev_len == 0:
+				prev_len = cur_len
+				adjusted_count += 1
+			else:
+				res = prev_len % cur_len
+				prev_len = cur_len
+				if res != 0:
+					adjusted_count += 1
+		if adjusted_count >= LAST_MSG_RAIN_WORDS:
+			break
 	if delta >= 1800:
 		user.last_msg_count = 0
-	if words >= LAST_MSG_RAIN_WORDS and not is_private and (datetime.datetime.now() - user.last_msg_rain).total_seconds() > LAST_MSG_RAIN_DELTA:
+	if adjusted_count >= LAST_MSG_RAIN_WORDS and not is_private and (datetime.datetime.now() - user.last_msg_rain).total_seconds() > LAST_MSG_RAIN_DELTA:
 		user.last_msg_count += 1
 		user.last_msg_rain = datetime.datetime.now()
 	user.last_msg=datetime.datetime.now()
-	user.save()
+	(User.update(
+		last_msg_count = user.last_msg_count,
+		last_msg_rain = user.last_msg_rain,
+		last_msg = user.last_msg
+	    ).where(User.user_id == user.user_id)
+	).execute()
 	return
+
+def unicode_strip(content):
+	pattern = re.compile("["
+			u"\U0001F600-\U0001F64F"
+			u"\U0001F300-\U0001F5FF"
+			u"\U0001F1E0-\U0001F1FF"
+			u"\U00002702-\U000027B0"
+			u"\U000024C2-\U0001F251"
+			"]+", flags=re.UNICODE)
+	return pattern.sub(r'',content)
 
 def mark_user_active(user):
 	if user is None:
 		return
 	if LAST_MSG_RAIN_COUNT > user.last_msg_count:
-		user.last_msg_count = LAST_MSG_RAIN_COUNT
-		user.save()
+		(User.update(
+			last_msg_count = LAST_MSG_RAIN_COUNT
+		    ).where(User.user_id == user.user_id)
+		).execute()
 
 # User table
 class User(Model):
 	user_id = CharField(unique=True)
 	user_name = CharField()
 	wallet_address = CharField(unique=True)
-	tipped_amount = FloatField()
-	wallet_balance = FloatField()
-	pending_receive = IntegerField()
-	pending_send = IntegerField()
-	tip_count = BigIntegerField()
-	created = DateTimeField()
-	last_msg = DateTimeField()
-	last_msg_rain = DateTimeField()
-	last_msg_count = IntegerField()
-	top_tip = CharField()
-	top_tip_ts = DateTimeField()
-	ticket_count = IntegerField()
+	tipped_amount = FloatField(default=0.0)
+	pending_receive = IntegerField(default=0)
+	pending_send = IntegerField(default=0)
+	tip_count = BigIntegerField(default=0)
+	created = DateTimeField(default=datetime.datetime.now())
+	last_msg = DateTimeField(default=datetime.datetime.now())
+	last_msg_rain = DateTimeField(default=datetime.datetime.now())
+	last_msg_count = IntegerField(default=0)
+	top_tip = CharField(default='0')
+	top_tip_ts = DateTimeField(default=datetime.datetime.now())
+	ticket_count = IntegerField(default=0)
+	last_withdraw = DateTimeField(default=datetime.datetime.now())
+	stats_ban = BooleanField(default=False)
+	rain_amount = FloatField(default=0.0)
+	giveaway_amount = FloatField(default=0.0)
 
 	class Meta:
 		database = db
@@ -416,21 +564,11 @@ class Transaction(Model):
 	source_address = CharField()
 	to_address = CharField(null = True)
 	amount = CharField()
-	processed = BooleanField()
-	created = DateTimeField()
-	tran_id = CharField()
-	attempts = IntegerField()
+	processed = BooleanField(default=False)
+	created = DateTimeField(default=datetime.datetime.now())
+	tran_id = CharField(default='')
+	attempts = IntegerField(default=0)
 	giveawayid = IntegerField(null = True)
-
-	class Meta:
-		database = db
-
-# PendingBalanceUpdate table, written by SendProcessor and used to update User whenever one is retrieved
-class PendingBalanceUpdate(Model):
-	user_id = ForeignKeyField(User, backref='pendings')
-	pending_send = IntegerField(null = False, default = 0)
-	pending_receive = IntegerField(null = False, default = 0)
-
 
 	class Meta:
 		database = db
@@ -467,7 +605,7 @@ class BannedUser(Model):
 
 def create_db():
 	db.connect()
-	db.create_tables([User, Transaction, PendingBalanceUpdate, Giveaway, Contestant, BannedUser], safe=True)
+	db.create_tables([User, Transaction, Giveaway, Contestant, BannedUser], safe=True)
 	logger.debug("DB Connected")
 
 create_db()

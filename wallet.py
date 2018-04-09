@@ -10,8 +10,7 @@ import asyncio
 wallet = settings.wallet
 
 logger = util.get_logger('wallet')
-
-balLock = asyncio.Semaphore()
+logger_newuser = util.get_logger('usr', log_file='user_creation.log')
 
 def communicate_wallet(wallet_command):
 	buffer = BytesIO()
@@ -41,6 +40,7 @@ async def create_or_fetch_user(user_id, user_name):
 		user = db.create_user(user_id=user_id, user_name=user_name,
 							  wallet_address=address)
 		logger.info('user %s created.', user_id)
+		logger_newuser.info('user_id: %s, user_name: %s, wallet_address: %s', user_id, user_name, address)
 		return user
 	else:
 		logger.info('user %s fetched.', user_id)
@@ -66,12 +66,6 @@ async def get_balance(user):
 			return None
 		actual_balance = int(wallet_output['balance'])
 		pending_balance = int(wallet_output['pending'])
-		# Equiv to rai_from_raw
-		try:
-			balLock.acquire()
-			db.update_pending(user)
-		finally:
-			balLock.release()
 		actual_balance = actual_balance / 100000000000000000000000000000
 		pending_balance = pending_balance / 100000000000000000000000000000
 		return {'actual':int(actual_balance),

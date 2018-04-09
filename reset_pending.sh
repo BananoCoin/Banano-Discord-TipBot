@@ -1,3 +1,3 @@
 #!/bin/bash
 
-sqlite3 bananodiscord.db < sql/reset_pending.sql
+sqlite3 discord.db < sql/reset_pending.sql
