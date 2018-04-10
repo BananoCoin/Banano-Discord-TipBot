@@ -85,7 +85,7 @@ TIPGIVEAWAY_INFO="%stipgiveaway or %sdonate <amount>\n Add <amount> to the curre
 TICKETSTATUS_INFO="%sticketstatus\n Check your current entry status for the current or future giveaway" % COMMAND_PREFIX
 GIVEAWAY_STATS_INFO="%sgiveawaystats or %sgoldenticket:\n Display statistics relevant to the current giveaway" % (COMMAND_PREFIX, COMMAND_PREFIX)
 WINNERS_INFO="%swinners:\n Display previous giveaway winners" % COMMAND_PREFIX
-LEADERBOARD_INFO="%ballers:\n Display the all-time tip leaderboard" % COMMAND_PREFIX
+LEADERBOARD_INFO="%sballers:\n Display the all-time tip leaderboard" % COMMAND_PREFIX
 TOPTIPS_INFO="%stoptips:\n Display the single largest tips for the past 24 hours, current month, and all time" % COMMAND_PREFIX
 STATS_INFO="%stipstats:\n Display your personal tipping stats (rank, total tipped, and average tip)" % COMMAND_PREFIX
 SETTIP_INFO=("%ssettiptotal <user>:\n Manually set the 'total tipped' for a user (for tip leaderboard)" +
@@ -124,10 +124,10 @@ HELP_TEXT_4=("Stats Commands:\n" +
 BOT_DESCRIPTION=("BananoTipBot v%s - An open source tip bot for Discord\n" +
 		"Developed by <@303599885800964097> - Feel free to send suggestions, ideas, and/or tips\n" +
 		"Source: Source code: https://github.com/bbedward/NANO-Tip-Bot")
-BALANCE_TEXT=(	"```Actual Balance   : %s\n" +
-		"Available Balance: %s\n" +
-		"Pending Send     : %s\n" +
-		"Pending Receipt  : %s```")
+BALANCE_TEXT=(	"```Actual Balance   : %.2f\n" +
+		"Available Balance: %.2f\n" +
+		"Pending Send     : %.2f\n" +
+		"Pending Receipt  : %.2f```")
 DEPOSIT_TEXT="Your wallet address is:"
 DEPOSIT_TEXT_2="%s"
 DEPOSIT_TEXT_3="QR: %s"
@@ -163,12 +163,12 @@ GIVEAWAY_MAX_FEE="Giveaway entry fee cannot be more than 5% of the prize pool"
 GIVEAWAY_ENDED="Congratulations! <@%s> was the winner of the giveaway! They have been sent %.2f BANANO!"
 GIVEAWAY_STATS="There are %d entries to win %.2f BANANO ending in %s - sponsored by %s.\nUse:\n - `" + COMMAND_PREFIX + "ticket` to enter\n -`" + COMMAND_PREFIX + "donate` to add to the pot\n - `" + COMMAND_PREFIX + "ticketstatus` to check status of your entry"
 GIVEAWAY_STATS_FEE="There are %d entries to win %.2f BANANO ending in %s - sponsored by %s.\nEntry fee: %d BANANO. Use:\n - `" + COMMAND_PREFIX + "ticket %d` to enter\n - `" + COMMAND_PREFIX + "donate` to add to the pot\n - `" + COMMAND_PREFIX + "ticketstatus` to check the status of your entry"
-GIVEAWAY_STATS_INACTIVE="There are no active giveaways\n%d BANANO required to to automatically start one! Donate to the pot using `" + COMMAND_PREFIX + "donate`. You can also sponsor one using `" + COMMAND_PREFIX + "givearai`"
+GIVEAWAY_STATS_INACTIVE="There are no active giveaways\n%d BANANO required to to automatically start one! Donate to the pot using `" + COMMAND_PREFIX + "donate`. You can also sponsor one using `" + COMMAND_PREFIX + "giveaway`"
 ENTER_ADDED="You've been successfully entered into the giveaway"
 ENTER_DUP="You've already entered the giveaway"
 TIPGIVEAWAY_USAGE="Usage:\n```" + TIPGIVEAWAY_INFO + "```"
 TIPGIVEAWAY_NO_ACTIVE="There are no active giveaways. Check giveaway status using `%sgiveawaystats`, or donate to the next one using `%stipgiveaway`" % (COMMAND_PREFIX, COMMAND_PREFIX)
-TIPGIVEAWAY_ENTERED_FUTURE="With your gorgeous donation I have reserved your ticket for the next community sponsored giveaway!"
+TIPGIVEAWAY_ENTERED_FUTURE="With your bantastic donation I have reserved your ticket for the next community sponsored giveaway!"
 TOPTIP_SPAM="No more top tips for %d seconds"
 PAUSE_MSG="All transaction activity is currently suspended. Check back later."
 BAN_SUCCESS="User %s can no longer receive tips"
@@ -182,7 +182,7 @@ STATSUNBAN_DUP="User %s is not stats banned"
 WINNERS_HEADER="Here are the previous %d giveaway winners! :trophy:" % WINNERS_COUNT
 WINNERS_EMPTY="There are no previous giveaway winners"
 WINNERS_SPAM="No more winners for %d seconds"
-RIGHTS="```You have been arrested by the BRPD for crimes against the Banano Republic. You have the right to remain unripe. Anything you say can and will be used against you in a banano court. You have the right to have an orangutan. If you cannot afford one, one will be appointed to you by the court. Until your orangutan arrives, you will spend your time in #jail, bail is set at 50 BANANO.```"
+RIGHTS="```You have been arrested by the BRPD for crimes against the Banano Republic. You have the right to remain unripe. Anything you say can and will be used against you in a banano court. You have the right to have an orangutan. If you cannot afford one, one will be appointed to you by the court. Until your orangutan arrives, you will spend your time in #jail, bail is set at 10 BANANO.```"
 RELEASE="```You have been released from Jail!```"
 CITIZENSHIP="```I hereby declare you a Citizen of the Banano Republic, may the Banano gods grant you all things which your heart desires.```"
 DEPORT="```I hereby withdraw your Citizenship to the Banano Republic, we don’t want to talk to you no more, you empty-headed animal-food-trough wiper. We fart in your general direction. Your mother was a hamster, and your father smelt of elderberries.```"
@@ -324,7 +324,7 @@ async def pause_msg(message):
 	if paused:
 		await post_dm(message.author, PAUSE_MSG)
 
-async def is_admin(user):
+def is_admin(user):
 	return (has_admin_role(user.roles) or user.id in settings.admin_ids)
 
 ### Commands
@@ -355,10 +355,10 @@ async def balance(ctx):
 		sendnano = send
 		receive = balances['pending']
 		receivenano = receive
-		await post_edit(bal_msg, BALANCE_TEXT,		"{:,}".format(actual),
-								"{:,}".format(available),
-								"{:,}".format(send),
-								"{:,}".format(receive))
+		await post_edit(bal_msg, BALANCE_TEXT,		actualnano,
+								availablenano,
+								sendnano,
+								receivenano)
 
 @client.command(pass_context=True, aliases=['register'])
 async def deposit(ctx):
@@ -972,7 +972,8 @@ async def settipcount(ctx, cnt: int = -1, user: discord.Member = None):
 		db.update_tip_count(user.id, cnt)
 
 @client.command(pass_context=True)
-async def arrest(message):
+async def arrest(ctx):
+	message = ctx.message
 	if len(message.mentions) > 0:
 		jail = discord.utils.get(message.server.roles,name='BANANO JAIL')
 		for member in message.mentions:
@@ -981,7 +982,8 @@ async def arrest(message):
 		await client.add_reaction(message, '\U0001f694')
 
 @client.command(pass_context=True)
-async def release(message):
+async def release(ctx):
+	message = ctx.message
 	if len(message.mentions) > 0:
 		jail = discord.utils.get(message.server.roles,name='BANANO JAIL')
 		for member in message.mentions:
@@ -989,7 +991,8 @@ async def release(message):
 			await post_response(message, RELEASE, mention_id=member.id)
 
 @client.command(pass_context=True)
-async def citizenship(message):
+async def citizenship(ctx):
+	message = ctx.message
 	if len(message.mentions) > 0:
 		citizenship = discord.utils.get(message.server.roles,name='Citizens')
 		for member in message.mentions:
@@ -998,7 +1001,8 @@ async def citizenship(message):
 		await client.add_reaction(message, '\:bananorepublic:429691019538202624')
 
 @client.command(pass_context=True)
-async def deport(message):
+async def deport(ctx):
+	message = ctx.message
 	if len(message.mentions) > 0:
 		citizenship = discord.utils.get(message.server.roles,name='Citizens')
 		for member in message.mentions:
@@ -1027,10 +1031,12 @@ def find_amount(input_text):
 		raise util.TipBotException("amount_not_found")
 
 ### Re-Used Discord Functions
-async def post_response(message, template, *args, incl_mention=True):
+async def post_response(message, template, *args, incl_mention=True, mention_id=None):
+	if mention_id is None:
+		mention_id = message.author.id
 	response = template % tuple(args)
 	if not message.channel.is_private and incl_mention:
-		response = "<@" + message.author.id + "> \n" + response
+		response = "<@" + mention_id + "> \n" + response
 	logger.info("sending response: '%s' for message: '%s' to userid: '%s' name: '%s'", response, message.content, message.author.id, message.author.name)
 	asyncio.sleep(0.05) # Slight delay to avoid discord bot responding above commands
 	return await client.send_message(message.channel, response)

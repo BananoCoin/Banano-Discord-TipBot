@@ -2,6 +2,7 @@ import re
 import datetime
 import util
 import settings
+from random import shuffle
 from random import randint
 from peewee import *
 from playhouse.sqliteq import SqliteQueueDatabase
@@ -16,7 +17,7 @@ LAST_MSG_RAIN_DELTA = 60
 # How many words messages must contain
 LAST_MSG_RAIN_WORDS = 3
 
-db = SqliteQueueDatabase('banano.db')
+db = SqliteQueueDatabase('discord.db')
 
 logger = util.get_logger("db")
 
@@ -86,12 +87,12 @@ def get_tip_stats(user_id):
 		average = 0
 	else:
 		average = tipped_amount / tip_count
-	return {'rank':rank, 'total':tipped_amount, 'average':average,'top':float(top_tip) / 1000000}
+	return {'rank':rank, 'total':tipped_amount, 'average':average,'top':float(top_tip)}
 
 # Update tip stats
 def update_tip_stats(user, tip, rain=False, giveaway=False):
 	(User.update(
-		tipped_amount=(User.tipped_amount + (tip / 1000000)),
+		tipped_amount=(User.tipped_amount + (tip)),
 		tip_count = User.tip_count + 1
 		).where(User.user_id == user.user_id)
 		).execute()
@@ -103,7 +104,7 @@ def update_tip_stats(user, tip, rain=False, giveaway=False):
 			).execute()
 	if rain:
 		(User.update(
-			rain_amount = User.rain_amount + (tip / 1000000)
+			rain_amount = User.rain_amount + (tip)
 			)
 			.where(User.user_id == user.user_id)
 		).execute()
@@ -246,7 +247,7 @@ def update_giveaway_transactions(giveawayid):
 			(Transaction.giveawayid == -1)
 	)).execute()
 
-	return float(tip_sum)/ 1000000
+	return float(tip_sum)
 
 def add_tip_to_giveaway(amount):
 	giveawayupdt = (Giveaway
@@ -318,15 +319,8 @@ def get_statsbanned():
 
 # Returns winning user
 def finish_giveaway():
-	contestants = Contestant.select().where(Contestant.banned == False).order_by(Contestant.user_id)
-	offset = randint(0, contestants.count() - 1)
-	i = 0
-	for c in contestants:
-		if offset == i:
-			winner = get_user_by_id(c.user_id)
-			break
-		else:
-			i += 1
+	contestants = Contestant.select().where(Contestant.banned == False).order_by(fn.Random())
+	winner = shuffle(contestants)[randint(0, contestants.count() - 1)]
 	Contestant.delete().execute()
 	giveaway = Giveaway.get(active=True)
 	giveaway.active=False
