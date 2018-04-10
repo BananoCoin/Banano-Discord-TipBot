@@ -919,11 +919,12 @@ async def tipban(ctx):
 	message = ctx.message
 	if is_admin(message.author):
 		for member in message.mentions:
-			if member.id not in settings.admin_ids and not has_admin_role(member.roles):
-				if db.ban_user(member.id):
-					await post_dm(message.author, BAN_SUCCESS, member.name)
-				else:
-					await post_dm(message.author, BAN_DUP, member.name)
+			if is_admin(member):
+				continue
+			if db.ban_user(member.id):
+				await post_dm(message.author, BAN_SUCCESS, member.name)
+			else:
+				await post_dm(message.author, BAN_DUP, member.name)
 
 @client.command(pass_context=True)
 async def statsban(ctx):
@@ -974,31 +975,36 @@ async def settipcount(ctx, cnt: int = -1, user: discord.Member = None):
 @client.command(pass_context=True)
 async def arrest(ctx):
 	message = ctx.message
-	if len(message.mentions) > 0:
-		jail = discord.utils.get(message.server.roles,name='BANANO JAIL')
-		for member in message.mentions:
-			await client.add_roles(member, jail)
-			await post_response(message, RIGHTS, mention_id=member.id)
-		await client.add_reaction(message, '\U0001f694')
+	if is_admin(message.author):
+		if len(message.mentions) > 0:
+			jail = discord.utils.get(message.server.roles,name='BANANO JAIL')
+			for member in message.mentions:
+				if is_admin(member):
+					continue
+				await client.add_roles(member, jail)
+				await post_response(message, RIGHTS, mention_id=member.id)
+			await client.add_reaction(message, '\U0001f694')
 
 @client.command(pass_context=True)
 async def release(ctx):
 	message = ctx.message
-	if len(message.mentions) > 0:
-		jail = discord.utils.get(message.server.roles,name='BANANO JAIL')
-		for member in message.mentions:
-			await client.remove_roles(member, jail)
-			await post_response(message, RELEASE, mention_id=member.id)
+	if is_admin(message.author):
+		if len(message.mentions) > 0:
+			jail = discord.utils.get(message.server.roles,name='BANANO JAIL')
+			for member in message.mentions:
+				await client.remove_roles(member, jail)
+				await post_response(message, RELEASE, mention_id=member.id)
 
 @client.command(pass_context=True)
 async def citizenship(ctx):
 	message = ctx.message
-	if len(message.mentions) > 0:
-		citizenship = discord.utils.get(message.server.roles,name='Citizens')
-		for member in message.mentions:
-			await client.add_roles(member, citizenship)
-			await post_response(message, CITIZENSHIP, mention_id=member.id)
-		await client.add_reaction(message, '\:bananorepublic:429691019538202624')
+	if is_admin(message.author):
+		if len(message.mentions) > 0:
+			citizenship = discord.utils.get(message.server.roles,name='Citizens')
+			for member in message.mentions:
+				await client.add_roles(member, citizenship)
+				await post_response(message, CITIZENSHIP, mention_id=member.id)
+			await client.add_reaction(message, '\:bananorepublic:429691019538202624')
 
 @client.command(pass_context=True)
 async def deport(ctx):
