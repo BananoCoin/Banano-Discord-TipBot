@@ -979,8 +979,6 @@ async def arrest(ctx):
 		if len(message.mentions) > 0:
 			jail = discord.utils.get(message.server.roles,name='BANANO JAIL')
 			for member in message.mentions:
-				if is_admin(member):
-					continue
 				await client.add_roles(member, jail)
 				await post_response(message, RIGHTS, mention_id=member.id)
 			await client.add_reaction(message, '\U0001f694')
