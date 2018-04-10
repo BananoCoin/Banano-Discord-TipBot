@@ -445,11 +445,10 @@ def get_top_tips():
 
 	return result
 
-# Marks TX as processed
-def mark_transaction_processed(uuid, amt, source_id, target_id=None, tranid=None):
+# Marks TX as sent
+def mark_transaction_sent(uuid, amt, source_id, target_id=None):
 	tu = (Transaction.update(
-			processed = True,
-			tran_id = tranid
+			processed = True
 		    ).where(
 			(Transaction.uid == uuid) &
 			(Transaction.processed == False)
@@ -458,6 +457,12 @@ def mark_transaction_processed(uuid, amt, source_id, target_id=None, tranid=None
 		update_pending(source_id,send=amt)
 		if target_id is not None:
 			update_pending(target_id, receive=amt)
+
+# This adds block to our TX
+def mark_transaction_processed(uuid, tranid):
+	(Transaction.update(
+		tran_id = tranid
+	).where(Transaction.uid == uuid)).execute()
 
 # Return false if last message was < LAST_MSG_TIME
 # If > LAST_MSG_TIME, return True and update the user
