@@ -1027,10 +1027,12 @@ def find_amount(input_text):
 		raise util.TipBotException("amount_not_found")
 
 ### Re-Used Discord Functions
-async def post_response(message, template, *args, incl_mention=True):
+async def post_response(message, template, *args, incl_mention=True, mention_id=None):
+	if mention_id is None:
+		mention_id = message.author.id
 	response = template % tuple(args)
 	if not message.channel.is_private and incl_mention:
-		response = "<@" + message.author.id + "> \n" + response
+		response = "<@" + mention_id + "> \n" + response
 	logger.info("sending response: '%s' for message: '%s' to userid: '%s' name: '%s'", response, message.content, message.author.id, message.author.name)
 	asyncio.sleep(0.05) # Slight delay to avoid discord bot responding above commands
 	return await client.send_message(message.channel, response)
