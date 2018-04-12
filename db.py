@@ -24,7 +24,7 @@ logger = util.get_logger("db")
 ### User Stuff
 def get_user_by_id(user_id):
 	try:
-		user = User.get(user_id=user_id)
+		user = User.get(user_id=str(user_id))
 		return user
 	except User.DoesNotExist:
 		# logger.debug('user %s does not exist !', user_id)
@@ -38,16 +38,22 @@ def get_user_by_wallet_address(address):
 		# logger.debug('wallet %s does not exist !', address)
 		return None
 
+def user_exists(user_id):
+	return User.select().where(User.user_id == user_id).count() > 0
+
 def get_active_users(since_minutes):
 	since_ts = datetime.datetime.now() - datetime.timedelta(minutes=since_minutes)
 	users = User.select().where(User.last_msg > since_ts)
 	return_ids = []
 	for user in users:
 		if user.last_msg_count >= LAST_MSG_RAIN_COUNT:
+			if is_banned(user.user_id):
+				continue
 			return_ids.append(user.user_id)
 	return return_ids
 
 def get_address(user_id):
+	user_id = str(user_id)
 	logger.info('getting wallet address for user %s ...', user_id)
 	user = get_user_by_id(user_id)
 	if user is None:
@@ -71,6 +77,7 @@ def get_giveaway_winners(count):
 	return return_data
 
 def get_tip_stats(user_id):
+	user_id = str(user_id)
 	user = get_user_by_id(user_id)
 	if user is None:
 		return None
@@ -116,14 +123,17 @@ def update_tip_stats(user, tip, rain=False, giveaway=False):
 		).execute()
 
 def update_tip_total(user_id, new_total):
+	user_id = str(user_id)
 	User.update(tipped_amount = new_total).where(User.user_id == user_id).execute()
 	return
 
 def update_tip_count(user_id, new_count):
+	user_id = str(user_id)
 	User.update(tip_count = new_count).where(User.user_id == user_id).execute()
 	return
 
 def update_pending(user_id, send=0, receive=0):
+	user_id=str(user_id)
 	return (User.update(
 			pending_send = (User.pending_send + send),
 			pending_receive = (User.pending_receive + receive)
@@ -131,6 +141,7 @@ def update_pending(user_id, send=0, receive=0):
 		).execute()
 
 def create_user(user_id, user_name, wallet_address):
+	user_id=str(user_id)
 	user = User(user_id=user_id,
 		    user_name=user_name,
 		    wallet_address=wallet_address,
@@ -168,14 +179,14 @@ def create_transaction(src_usr, uuid, to_addr, amt, target_id=None, giveaway_id=
 	update_pending(src_usr.user_id, send=amt)
 	if target_id is not None:
 		update_pending(target_id, receive=amt)
-	else:
-		update_last_withdraw(src_usr.user_id)
 	return tx
 
 def update_last_withdraw(user_id):
+	user_id = str(user_id)
 	User.update(last_withdraw=datetime.datetime.now()).where(User.user_id == user_id).execute()
 
 def get_last_withdraw_delta(user_id):
+	user_id = str(user_id)
 	try:
 		user = User.select(User.last_withdraw).where(User.user_id == user_id).get()
 		delta = (datetime.datetime.now() - user.last_withdraw).total_seconds()
@@ -206,6 +217,8 @@ def process_giveaway_transactions(giveaway_id, winner_user_id):
 	)).execute()
 # Start Giveaway
 def start_giveaway(user_id, user_name, amount, end_time, channel, entry_fee = 0):
+	user_id=str(user_id)
+	channel=str(channel)
 	giveaway = Giveaway(started_by=user_id,
 			    started_by_name=user_name,
 			    active=True,
@@ -218,16 +231,18 @@ def start_giveaway(user_id, user_name, amount, end_time, channel, entry_fee = 0)
 			   )
 	giveaway.save()
 	# Delete contestants not meeting fee criteria
+	deleted = []
 	if entry_fee > 0:
 		entries = Contestant.select()
 		for c in entries:
 			donated = get_tipgiveaway_contributions(c.user_id)
 			if entry_fee > donated:
 				c.delete_instance()
+				deleted.append(c.user_id)
 	tip_amt = update_giveaway_transactions(giveaway.id)
 	giveaway.tip_amount = tip_amt
 	giveaway.save()
-	return giveaway
+	return (giveaway, deleted)
 
 def get_giveaway():
 	try:
@@ -273,10 +288,12 @@ def get_tipgiveaway_contributions(user_id, giveawayid=-1):
 	return tip_sum
 
 def is_banned(user_id):
+	user_id=str(user_id)
 	banned = BannedUser.select().where(BannedUser.user_id == user_id).count()
 	return banned > 0
 
 def ban_user(user_id):
+	user_id = str(user_id)
 	already_banned = is_banned(user_id)
 	if already_banned > 0:
 		return False
@@ -285,14 +302,17 @@ def ban_user(user_id):
 	return True
 
 def statsban_user(user_id):
+	user_id = str(user_id)
 	banned = User.update(stats_ban = True).where(User.user_id == user_id).execute()
 	return banned > 0
 
 def unban_user(user_id):
+	user_id = str(user_id)
 	deleted = BannedUser.delete().where(BannedUser.user_id == user_id).execute()
 	return deleted > 0
 
 def statsunban_user(user_id):
+	user_id = str(user_id)
 	unbanned = User.update(stats_ban = False).where(User.user_id == user_id).execute()
 	return unbanned > 0
 
@@ -339,6 +359,7 @@ def finish_giveaway():
 
 # Returns True is contestant added, False if contestant already exists
 def add_contestant(user_id, banned=False, override_ban=False):
+	user_id=str(user_id)
 	try:
 		c = Contestant.get(Contestant.user_id == user_id)
 		if c.banned and override_ban:
@@ -351,6 +372,7 @@ def add_contestant(user_id, banned=False, override_ban=False):
 		return True
 
 def get_ticket_status(user_id):
+	user_id = str(user_id)
 	try:
 		giveaway = Giveaway.select().where(Giveaway.active==True).get()
 		if contestant_exists(user_id):
@@ -365,9 +387,11 @@ def get_ticket_status(user_id):
 				"You may enter using `%sticket %d`") % (fee, contributions, cost, settings.command_prefix, cost)
 		return return_str
 	except Giveaway.DoesNotExist:
-		return "There are no active giveaways"
+		contributions = get_tipgiveaway_contributions(user_id)
+		return "There is no active giveaway.\nSo far you've contributed %d BANANO towards the next one!" % contributions
 
 def contestant_exists(user_id):
+	user_id = str(user_id)
 	c = Contestant.select().where(Contestant.user_id == user_id).count()
 	return c > 0
 
@@ -379,6 +403,7 @@ def is_active_giveaway():
 
 # Return true if shadow banned, or banned in general
 def ticket_spam_check(user_id, increment=True):
+	user_id = str(user_id)
 	user = get_user_by_id(user_id)
 	if user is None:
 		return False
@@ -534,6 +559,54 @@ def mark_user_active(user):
 		    ).where(User.user_id == user.user_id)
 		).execute()
 
+## Favorites
+
+# Return true if favorite added
+def add_favorite(user_id, favorite_id):
+	user_id=str(user_id)
+	favorite_id=str(favorite_id)
+	if not user_exists(favorite_id):
+		return False
+	count = UserFavorite.select().where(UserFavorite.user_id == user_id).count()
+	# Identifier makes it easy for user to remove their favorite via DM
+	if count == 0:
+		identifier = 1
+	else:
+		identifier = count + 1
+	exists = UserFavorite.select().where((UserFavorite.user_id == user_id) & (UserFavorite.favorite_id == favorite_id)).count()
+	if exists == 0:
+		fav = UserFavorite(user_id=user_id,favorite_id=favorite_id,identifier=identifier)
+		fav.save()
+		return True
+	return False
+
+# Returns true if favorite deleted
+def remove_favorite(user_id, favorite_id=None,identifier=None):
+
+	if favorite_id is None and identifier is None:
+		return False
+	user_id=str(user_id)
+	if favorite_id is not None:
+		favorite_id = str(favorite_id)
+		return UserFavorite.delete().where((UserFavorite.user_id == user_id) & (UserFavorite.favorite_id == favorite_id)).execute() > 0
+	elif identifier is not None:
+		return UserFavorite.delete().where((UserFavorite.user_id == user_id) & (UserFavorite.identifier == identifier)).execute() > 0
+
+# Returns list of favorites for user ID
+def get_favorites_list(user_id):
+	user_id = str(user_id)
+	favorites = UserFavorite.select().where(UserFavorite.user_id==user_id).order_by(UserFavorite.identifier)
+	idx = 1
+	# Normalize identifiers
+	for fav in favorites:
+		fav.identifier = idx
+		UserFavorite.update(identifier=idx).where((UserFavorite.user_id==user_id) & (UserFavorite.favorite_id == fav.favorite_id)).execute()
+		idx += 1
+	return_data = []
+	for fav in favorites:
+		return_data.append({'user_id':fav.favorite_id,'id': fav.identifier})
+	return return_data
+
 # User table
 class User(Model):
 	user_id = CharField(unique=True)
@@ -604,9 +677,16 @@ class BannedUser(Model):
 	class Meta:
 		database = db
 
+# Favorites
+class UserFavorite(Model):
+	user_id = CharField()
+	favorite_id = CharField()
+	created = DateTimeField(default=datetime.datetime.now(),constraints=[SQL('DEFAULT CURRENT_TIMESTAMP')])
+	identifier = IntegerField()
+
 def create_db():
 	db.connect()
-	db.create_tables([User, Transaction, Giveaway, Contestant, BannedUser], safe=True)
+	db.create_tables([User, Transaction, Giveaway, Contestant, BannedUser, UserFavorite], safe=True)
 	logger.debug("DB Connected")
 
 create_db()

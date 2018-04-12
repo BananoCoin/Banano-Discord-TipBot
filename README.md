@@ -1,8 +1,30 @@
-# NANO Tip Bot
+# BananoBot++ (a BANANO currency Tip Bot for Discord)
 
-NANO Tip Bot is an open source, free to use nano tip bot for discord.
+BananoBot++ is an open source, free to use banano tip bot for discord.
 
-Intended to operate in a similar manner to the old tip bot on nano's discord server, with some enhancements.
+Based on Graham (https://github.com/bbedward/Graham_Nano_Tip_Bot)
+
+A few of the features included in this bot:
+
+- standard tipping (`ban`,`bansplit`)
+- tipping all actively contributing users (`rain`)
+- giveaways+raffles from individual sponsors or auto-started by the bot when pool reaches certain amount (`giveaway`,`tipgiveaway`)
+- individual statistics (`tipstats`)
+- bot-wide statistics (`ballers`,`toptips`,`winners`)
+- individual favorites list (`addfavorite`,`removefavorite`,`tipfavorites`)
+- Administration commands for specific users or roles (`tipban`/`tipunban`, `statsban/statsunban`, `settiptotal/settipcount`, `pause/unpause`)
+
+## About
+
+BananoBot++ is designed so that every tip is a real transaction on the BANANO network.
+
+Some highlights:
+
+- Transactions are queued and processed synchronously in a worker thread, while bot activity is handled in a main thread.
+- User data, transactions, and all other persisted data is stored using the Peewee ORM with Sqlite
+- Operates with a single BANANO wallet, with 1 account per user
+
+Recommend using with a GPU/OpenCL configured node (or work peer) on busier discord servers due to POW calculation.
 
 ## Usage
 
@@ -22,8 +44,7 @@ nohup python3 bot.py &
 
 - Python 3.5+
 - NANO Node v10+
-- `setuptools`
-- `discord`
+- `discord.py` 1.0.0a (rewrite)
 - `peewee`
 - `asyncio`
 - `pycurl`
