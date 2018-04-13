@@ -100,7 +100,7 @@ RAIN_INFO=("Distribute <amount> evenly to users who are eligible.\n" +
 		"Eligibility is determined based on your *recent* activity **and** contributions to public channels. " +
 		"Several factors are considered in picking who receives rain. If you aren't receiving it, you aren't contributing enough or your contributions are low-quality/spammy.\n"
 		"Note: Users who have a status of 'offline' or 'do not disturb' do not receive rain.\n" +
-		"Example: `rain 1000` - distributes 1000 evenly to eligible users (similar to `tipsplit`)" +
+		"Example: `rain 1000` - distributes 1000 evenly to eligible users (similar to `bansplit`)" +
 		"\n**Minimum rain amount: %d BANANO**") % (RAIN_MINIMUM)
 START_GIVEAWAY_CMD="%sgiveaway, takes: amount, fee=(amount), duration=(minutes)" % (COMMAND_PREFIX)
 START_GIVEAWAY_OVERVIEW="Sponsor a giveaway"
@@ -168,7 +168,7 @@ BALANCE_TEXT=(	"```Actual Balance   : %.2f BANANO\n" +
 DEPOSIT_TEXT="Your wallet address is:"
 DEPOSIT_TEXT_2="%s"
 DEPOSIT_TEXT_3="QR: %s"
-INSUFFICIENT_FUNDS_TEXT="You don't have enough nano in your available balance!"
+INSUFFICIENT_FUNDS_TEXT="You don't have enough BANANO in your available balance!"
 TIP_ERROR_TEXT="Something went wrong with the tip. I wrote to logs."
 TIP_RECEIVED_TEXT="You were tipped %d BANANO by %s"
 TIP_SELF="No valid recipients found in your tip.\n(You cannot tip yourself and certain other users are exempt from receiving tips)"
@@ -213,6 +213,10 @@ STATSUNBAN_DUP="User %s is not stats banned"
 WINNERS_HEADER="Here are the previous %d giveaway winners! :trophy:" % WINNERS_COUNT
 WINNERS_EMPTY="There are no previous giveaway winners"
 WINNERS_SPAM="No more winners for %d seconds"
+RIGHTS="```You have been arrested by the BRPD for crimes against the Banano Republic. You have the right to remain unripe. Anything you say can and will be used against you in a banano court. You have the right to have an orangutan. If you cannot afford one, one will be appointed to you by the court. Until your orangutan arrives, you will spend your time in #jail, bail is set at 10 BANANO.```"
+RELEASE="```You have been released from Jail!```"
+CITIZENSHIP="```I hereby declare you a Citizen of the Banano Republic, may the Banano gods grant you all things which your heart desires.```"
+DEPORT="```I hereby withdraw your Citizenship to the Banano Republic, we don’t want to talk to you no more, you empty-headed animal-food-trough wiper. We fart in your general direction. Your mother was a hamster, and your father smelt of elderberries.```"
 ### END Response Templates ###
 
 # Paused flag, indicates whether or not bot is paused
@@ -886,7 +890,7 @@ async def giveaway(ctx):
 			await post_dm(message.author, INSUFFICIENT_FUNDS_TEXT)
 			return
 		end_time = datetime.datetime.now() + datetime.timedelta(minutes=duration)
-		nano_amt = amount / 1000000
+		nano_amt = amount
 		giveaway,deleted = db.start_giveaway(message.author.id, message.author.name, nano_amt, end_time, message.channel.id, entry_fee=fee)
 		uid = str(uuid.uuid4())
 		await wallet.make_transaction_to_address(user, amount, None, uid, giveaway_id=giveaway.id)
@@ -925,7 +929,7 @@ async def tip_giveaway(message, ticket=False):
 			await add_x_reaction(message)
 			await post_dm(message.author, INSUFFICIENT_FUNDS_TEXT)
 			return
-		nano_amt = amount / 1000000
+		nano_amt = amount
 		if giveaway is not None:
 			db.add_tip_to_giveaway(nano_amt)
 			giveawayid = giveaway.id
@@ -964,7 +968,7 @@ async def tip_giveaway(message, ticket=False):
 		# If tip sum is >= GIVEAWAY MINIMUM then start giveaway
 		if giveaway is None:
 			tipgiveaway_sum = db.get_tipgiveaway_sum()
-			nano_amt = float(tipgiveaway_sum)/ 1000000
+			nano_amt = float(tipgiveaway_sum)
 			if tipgiveaway_sum >= GIVEAWAY_MINIMUM:
 				end_time = datetime.datetime.now() + datetime.timedelta(minutes=GIVEAWAY_AUTO_DURATION)
 				db.start_giveaway(client.user.id, client.user.name, 0, end_time, message.channel.id,entry_fee=fee)
@@ -1096,7 +1100,7 @@ async def leaderboard(ctx):
 			padding = " " * ((max_l - len(top_user_nm)) + 1)
 			response += top_user_nm
 			response += padding
-			response += '- %.6f NANO' % top_user['amount']
+			response += '- %.2f BANANO' % top_user['amount']
 			response += '\n'
 		response += "```"
 		await post_response(message, response)
@@ -1313,6 +1317,27 @@ async def release(ctx):
 				await client.remove_roles(member, jail)
 				await post_response(message, RELEASE, mention_id=member.id)
 
+@client.command(pass_context=True)
+async def citizenship(ctx):
+	message = ctx.message
+	if is_admin(message.author):
+		if len(message.mentions) > 0:
+			citizenship = discord.utils.get(message.server.roles,name='Citizens')
+			for member in message.mentions:
+				await client.add_roles(member, citizenship)
+				await post_response(message, CITIZENSHIP, mention_id=member.id)
+			await client.add_reaction(message, '\:bananorepublic:429691019538202624')
+
+@client.command(pass_context=True)
+async def deport(ctx):
+	message = ctx.message
+	if len(message.mentions) > 0:
+		citizenship = discord.utils.get(message.server.roles,name='Citizens')
+		for member in message.mentions:
+			await client.remove_roles(member, citizenship)
+			await post_response(message, DEPORT, mention_id=member.id)
+			await client.add_reaction(message, '\U0001F6F3')
+
 ### Utility Functions
 def get_qr_url(text):
 	return 'https://chart.googleapis.com/chart?cht=qr&chl=%s&chs=180x180&choe=UTF-8&chld=L|2' % text
@@ -1383,4 +1408,3 @@ async def react_to_message(message, amount):
 
 # Start the bot
 client.run(settings.discord_bot_token)
-
