@@ -684,6 +684,9 @@ class UserFavorite(Model):
 	created = DateTimeField(default=datetime.datetime.now(),constraints=[SQL('DEFAULT CURRENT_TIMESTAMP')])
 	identifier = IntegerField()
 
+	class Meta:
+		database = db
+
 def create_db():
 	db.connect()
 	db.create_tables([User, Transaction, Giveaway, Contestant, BannedUser, UserFavorite], safe=True)
