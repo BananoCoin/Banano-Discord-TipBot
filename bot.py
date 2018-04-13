@@ -116,7 +116,7 @@ ENTER_OVERVIEW="Enter the current giveaway"
 ENTER_INFO=("Enter the current giveaway, if there is one. Takes (fee) as argument only if there's an entry fee." +
 		"\n Fee will go towards the prize pool and be deducted from your available balance immediately" +
 		"\nExample: `ticket` (to enter a giveaway without a fee), `ticket 10` (to enter a giveaway with a fee of 10)")
-TIPGIVEAWAY_CMD="%sdonate, takes: amount" % (COMMAND_PREFIX, COMMAND_PREFIX)
+TIPGIVEAWAY_CMD="%sdonate, takes: amount" % (COMMAND_PREFIX)
 TIPGIVEAWAY_OVERVIEW="Add to present or future giveaway prize pool"
 TIPGIVEAWAY_INFO=("Add <amount> to the current giveaway pool\n"+
 		"If there is no giveaway, one will be started when minimum is reached." +
@@ -162,7 +162,7 @@ TIP_AUTHOR_OVERVIEW="Donate to the author of this bot :yellow_heart:"
 BOT_DESCRIPTION=("BananoBot++ v%s - An open source BANANO tip bot for Discord\n" +
 		"Developed by bbedward - Feel free to send suggestions, ideas, and/or tips\n") % BOT_VERSION
 BALANCE_TEXT=(	"```Actual Balance   : %.2f BANANO\n" +
-		"Available Balance: %.2f BANANO)\n" +
+		"Available Balance: %.2f BANANO\n" +
 		"Pending Send     : %.2f BANANO\n" +
 		"Pending Receipt  : %.2f BANANO```")
 DEPOSIT_TEXT="Your wallet address is:"
@@ -189,17 +189,17 @@ TIPSPLIT_SMALL="Tip amount is too small to be distributed to that many users"
 RAIN_NOBODY="I couldn't find anybody eligible to receive rain"
 GIVEAWAY_EXISTS="There's already an active giveaway"
 GIVEAWAY_STARTED="%s has sponsored a giveaway of %.2f BANANO! Use:\n - `" + COMMAND_PREFIX + "ticket` to enter\n - `" + COMMAND_PREFIX + "donate` to increase the pot\n - `" + COMMAND_PREFIX + "ticketstatus` to check the status of your entry"
-GIVEAWAY_STARTED_FEE="%s has sponsored a giveaway of %.2f BANANO! The entry fee is %d naneroo. Use:\n - `" + COMMAND_PREFIX + "ticket %d` to buy your ticket\n - `" + COMMAND_PREFIX + "donate` to increase the pot\n - `" + COMMAND_PREFIX + "ticketstatus` to check the status of your entry"
+GIVEAWAY_STARTED_FEE="%s has sponsored a giveaway of %.2f BANANO! The entry fee is %d BANANO. Use:\n - `" + COMMAND_PREFIX + "ticket %d` to buy your ticket\n - `" + COMMAND_PREFIX + "donate` to increase the pot\n - `" + COMMAND_PREFIX + "ticketstatus` to check the status of your entry"
 GIVEAWAY_FEE_TOO_HIGH="A giveaway has started where the entry fee is higher than your donations! Use `%sticketstatus` to see how much you need to enter!" % COMMAND_PREFIX
 GIVEAWAY_MAX_FEE="Giveaway entry fee cannot be more than 5% of the prize pool"
 GIVEAWAY_ENDED="Congratulations! <@%s> was the winner of the giveaway! They have been sent %.2f BANANO!"
 GIVEAWAY_STATS="There are %d entries to win %.2f BANANO ending in %s - sponsored by %s.\nUse:\n - `" + COMMAND_PREFIX + "ticket` to enter\n -`" + COMMAND_PREFIX + "donate` to add to the pot\n - `" + COMMAND_PREFIX + "ticketstatus` to check status of your entry"
-GIVEAWAY_STATS_FEE="There are %d entries to win %.2f BANANO ending in %s - sponsored by %s.\nEntry fee: %d naneroo. Use:\n - `" + COMMAND_PREFIX + "ticket %d` to enter\n - `" + COMMAND_PREFIX + "donate` to add to the pot\n - `" + COMMAND_PREFIX + "ticketstatus` to check the status of your entry"
+GIVEAWAY_STATS_FEE="There are %d entries to win %.2f BANANO ending in %s - sponsored by %s.\nEntry fee: %d BANANO. Use:\n - `" + COMMAND_PREFIX + "ticket %d` to enter\n - `" + COMMAND_PREFIX + "donate` to add to the pot\n - `" + COMMAND_PREFIX + "ticketstatus` to check the status of your entry"
 GIVEAWAY_STATS_INACTIVE="There are no active giveaways\n%d BANANO required to to automatically start one! Use\n - `" + COMMAND_PREFIX + "donate` to donate to the next giveaway.\n - `" + COMMAND_PREFIX + "givearai` to sponsor your own giveaway\n - `" + COMMAND_PREFIX + "ticketstatus` to see how much you've already donated to the next giveaway"
 ENTER_ADDED="You've been successfully entered into the giveaway"
 ENTER_DUP="You've already entered the giveaway"
 TIPGIVEAWAY_NO_ACTIVE="There are no active giveaways. Check giveaway status using `%sgiveawaystats`, or donate to the next one using `%stipgiveaway`" % (COMMAND_PREFIX, COMMAND_PREFIX)
-TIPGIVEAWAY_ENTERED_FUTURE="With your gorgeous donation I have reserved your ticket for the next community sponsored giveaway!"
+TIPGIVEAWAY_ENTERED_FUTURE="With your bantastic donation I have reserved your ticket for the next community sponsored giveaway!"
 TOPTIP_SPAM="No more top tips for %d seconds"
 PAUSE_MSG="All transaction activity is currently suspended. Check back later."
 BAN_SUCCESS="User %s can no longer receive tips"
