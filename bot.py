@@ -130,7 +130,7 @@ GIVEAWAY_STATS_CMD="%sgiveawaystats or %sgoldenticket" % (COMMAND_PREFIX, COMMAN
 GIVEAWAY_STATS_OVERVIEW="Display statistics relevant to the current giveaway"
 GIVEAWAY_STATS_INFO=GIVEAWAY_STATS_OVERVIEW
 WINNERS_CMD="%swinners" % COMMAND_PREFIX
-WINNERS_INFO="`Display previous giveaway winners"
+WINNERS_INFO="Display previous giveaway winners"
 WINNERS_OVERVIEW=WINNERS_INFO
 LEADERBOARD_CMD="%sleaderboard or %sballers" % (COMMAND_PREFIX, COMMAND_PREFIX)
 LEADERBOARD_INFO="Display the all-time tip leaderboard"
@@ -1237,7 +1237,9 @@ async def unpause(ctx):
 
 @client.command()
 async def tipban(ctx):
-	message = ctx.message
+	await do_tipban(ctx.message)
+
+async def do_tipban(message):
 	if is_admin(message.author):
 		for member in message.mentions:
 			if member.id not in settings.admin_ids and not has_admin_role(member.roles):
@@ -1258,7 +1260,9 @@ async def statsban(ctx):
 
 @client.command()
 async def tipunban(ctx):
-	message = ctx.message
+	await do_tipunban(ctx.message)
+
+async def do_tipunban(message):
 	if is_admin(message.author):
 		for member in message.mentions:
 			if db.unban_user(member.id):
@@ -1298,7 +1302,7 @@ async def arrest(ctx):
 	if is_admin(message.author):
 		if len(message.mentions) > 0:
 			# Tip ban too
-			await tipban(ctx)
+			await do_tipban(message)
 			jail = discord.utils.get(message.guild.roles,name='BANANO JAIL')
 			for member in message.mentions:
 				await member.add_roles(jail)
@@ -1311,7 +1315,7 @@ async def release(ctx):
 	if is_admin(message.author):
 		if len(message.mentions) > 0:
 			# Tip unban too
-			await tipunban(ctx)
+			await do_tipunban(message)
 			jail = discord.utils.get(message.guild.roles,name='BANANO JAIL')
 			for member in message.mentions:
 				await member.remove_roles(jail)
