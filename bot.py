@@ -1301,9 +1301,9 @@ async def arrest(ctx):
 			await tipban(ctx)
 			jail = discord.utils.get(message.guild.roles,name='BANANO JAIL')
 			for member in message.mentions:
-				await client.add_roles(member, jail)
+				await member.add_roles(jail)
 				await post_response(message, RIGHTS, mention_id=member.id)
-			await client.add_reaction(message, '\U0001f694')
+			await message.add_reaction('\U0001f694')
 
 @client.command()
 async def release(ctx):
@@ -1314,29 +1314,29 @@ async def release(ctx):
 			await tipunban(ctx)
 			jail = discord.utils.get(message.guild.roles,name='BANANO JAIL')
 			for member in message.mentions:
-				await client.remove_roles(member, jail)
+				await member.remove_roles(jail)
 				await post_response(message, RELEASE, mention_id=member.id)
 
-@client.command(pass_context=True)
+@client.command()
 async def citizenship(ctx):
 	message = ctx.message
 	if is_admin(message.author):
 		if len(message.mentions) > 0:
 			citizenship = discord.utils.get(message.server.roles,name='Citizens')
 			for member in message.mentions:
-				await client.add_roles(member, citizenship)
+				await member.add_roles(citizenship)
 				await post_response(message, CITIZENSHIP, mention_id=member.id)
-			await client.add_reaction(message, '\:bananorepublic:429691019538202624')
+			await message.add_reaction('\:bananorepublic:429691019538202624')
 
-@client.command(pass_context=True)
+@client.command()
 async def deport(ctx):
 	message = ctx.message
 	if len(message.mentions) > 0:
 		citizenship = discord.utils.get(message.server.roles,name='Citizens')
 		for member in message.mentions:
-			await client.remove_roles(member, citizenship)
+			await member.remove_roles(citizenship)
 			await post_response(message, DEPORT, mention_id=member.id)
-			await client.add_reaction(message, '\U0001F6F3')
+			await message.add_reaction('\U0001F6F3')
 
 ### Utility Functions
 def get_qr_url(text):
