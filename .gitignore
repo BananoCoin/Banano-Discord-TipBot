@@ -104,5 +104,10 @@ venv.bak/
 .mypy_cache/
 
 # NANO tip bot stuff
-nanotipbot.db
+*.db
 settings.py
+nohup.out
+*.log*
+backups/
+*.db-wal
+*.db-shm

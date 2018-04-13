@@ -93,7 +93,7 @@ TIPSPLIT_INFO="Distributes a tip evenly to all mentioned users.\nExample: `bansp
 TIPRANDOM_CMD="%sbanrandom, takes: amount" % COMMAND_PREFIX
 TIPRANDOM_OVERVIEW="Tips a random active user"
 TIPRANDOM_INFO=("Tips amount to a random active user. Active user list picked using same logic as rain" +
-		"\n***Minimum banrandom amount: %d BANANO") % settings.tiprandom_minimum
+		"\n**Minimum banrandom amount: %d BANANO**") % settings.tiprandom_minimum
 RAIN_CMD="%srain, takes: amount" % COMMAND_PREFIX
 RAIN_OVERVIEW="Split tip among all active* users"
 RAIN_INFO=("Distribute <amount> evenly to users who are eligible.\n" +
