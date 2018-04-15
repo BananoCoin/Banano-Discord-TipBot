@@ -195,7 +195,7 @@ GIVEAWAY_MAX_FEE="Giveaway entry fee cannot be more than 5% of the prize pool"
 GIVEAWAY_ENDED="Congratulations! <@%s> was the winner of the giveaway! They have been sent %.2f BANANO!"
 GIVEAWAY_STATS="There are %d entries to win %.2f BANANO ending in %s - sponsored by %s.\nUse:\n - `" + COMMAND_PREFIX + "ticket` to enter\n -`" + COMMAND_PREFIX + "donate` to add to the pot\n - `" + COMMAND_PREFIX + "ticketstatus` to check status of your entry"
 GIVEAWAY_STATS_FEE="There are %d entries to win %.2f BANANO ending in %s - sponsored by %s.\nEntry fee: %d BANANO. Use:\n - `" + COMMAND_PREFIX + "ticket %d` to enter\n - `" + COMMAND_PREFIX + "donate` to add to the pot\n - `" + COMMAND_PREFIX + "ticketstatus` to check the status of your entry"
-GIVEAWAY_STATS_INACTIVE="There are no active giveaways\n%d BANANO required to to automatically start one! Use\n - `" + COMMAND_PREFIX + "donate` to donate to the next giveaway.\n - `" + COMMAND_PREFIX + "givearai` to sponsor your own giveaway\n - `" + COMMAND_PREFIX + "ticketstatus` to see how much you've already donated to the next giveaway"
+GIVEAWAY_STATS_INACTIVE="There are no active giveaways\n%d BANANO required to to automatically start one! Use\n - `" + COMMAND_PREFIX + "donate` to donate to the next giveaway.\n - `" + COMMAND_PREFIX + "giveaway` to sponsor your own giveaway\n - `" + COMMAND_PREFIX + "ticketstatus` to see how much you've already donated to the next giveaway"
 ENTER_ADDED="You've been successfully entered into the giveaway"
 ENTER_DUP="You've already entered the giveaway"
 TIPGIVEAWAY_NO_ACTIVE="There are no active giveaways. Check giveaway status using `%sgiveawaystats`, or donate to the next one using `%stipgiveaway`" % (COMMAND_PREFIX, COMMAND_PREFIX)
@@ -1326,7 +1326,7 @@ async def citizenship(ctx):
 	message = ctx.message
 	if is_admin(message.author):
 		if len(message.mentions) > 0:
-			citizenship = discord.utils.get(message.server.roles,name='Citizens')
+			citizenship = discord.utils.get(message.guild.roles,name='Citizens')
 			for member in message.mentions:
 				await member.add_roles(citizenship)
 				await post_response(message, CITIZENSHIP, mention_id=member.id)
@@ -1336,7 +1336,7 @@ async def citizenship(ctx):
 async def deport(ctx):
 	message = ctx.message
 	if len(message.mentions) > 0:
-		citizenship = discord.utils.get(message.server.roles,name='Citizens')
+		citizenship = discord.utils.get(message.guild.roles,name='Citizens')
 		for member in message.mentions:
 			await member.remove_roles(citizenship)
 			await post_response(message, DEPORT, mention_id=member.id)
