@@ -98,17 +98,35 @@ def get_tip_stats(user_id):
 
 # Update tip stats
 def update_tip_stats(user, tip, rain=False, giveaway=False):
+	tip = int(tip)
 	(User.update(
 		tipped_amount=(User.tipped_amount + (tip)),
 		tip_count = User.tip_count + 1
 		).where(User.user_id == user.user_id)
 		).execute()
+	# Update all time tip if necessary
 	if tip > int(float(user.top_tip)):
 		(User.update(
 			top_tip = tip,
 			top_tip_ts = datetime.datetime.now()
 			).where(User.user_id == user.user_id)
 			).execute()
+	# Update monthly tip if necessary
+	if user.top_tip_month_ts.month != datetime.datetime.now().month or tip > int(float(user.top_tip_month)):
+		(User.update(
+			top_tip_month = tip,
+			top_tip_month_ts = datetime.datetime.now()
+			).where(User.user_id == user.user_id)
+			).execute()
+	# Update 24H tip if necessary
+	delta = datetime.datetime.now() - user.top_tip_day_ts
+	if delta.total_seconds() > 86400 or tip > int(float(user.top_tip_day)):
+		(User.update(
+			top_tip_day = tip,
+			top_tip_day_ts = datetime.datetime.now()
+			).where(User.user_id == user.user_id)
+			).execute()
+	# Update rain or giveaway stats
 	if rain:
 		(User.update(
 			rain_amount = User.rain_amount + (tip)
@@ -439,8 +457,10 @@ def get_top_tips():
 	month_str = dt.strftime("%B")
 	month_num = "%02d" % dt.month # Sqlite uses 2 digit month (with leading 0)
 	amount = fn.MAX(User.top_tip).alias('amount')
-	top_24h = User.select(amount, User.user_name).where((User.top_tip_ts > past_dt) & (User.stats_ban == False)).order_by(User.top_tip_ts).limit(1)
-	top_month = User.select(amount, User.user_name).where((fn.strftime("%m", User.top_tip_ts) == month_num) & (User.stats_ban == False)).order_by(User.top_tip_ts).limit(1)
+	amount_day = fn.MAX(User.top_tip_day).alias('amount')
+	amount_month = fn.MAX(User.top_tip_month).alias('amount')
+	top_24h = User.select(amount_day, User.user_name).where((User.top_tip_day_ts > past_dt) & (User.stats_ban == False)).order_by(User.top_tip_day_ts).limit(1)
+	top_month = User.select(amount_month, User.user_name).where((fn.strftime("%m", User.top_tip_month_ts) == month_num) & (User.stats_ban == False)).order_by(User.top_tip_month_ts).limit(1)
 	top_at = User.select(amount, User.user_name).where(User.stats_ban == False).order_by(User.top_tip_ts).limit(1)
 	# Formatted output
 	user24h = None
@@ -622,6 +642,10 @@ class User(Model):
 	last_msg_count = IntegerField(default=0, constraints=[SQL('DEFAULT 0')])
 	top_tip = IntegerField(default=0, constraints=[SQL('DEFAULT 0')])
 	top_tip_ts = DateTimeField(default=datetime.datetime.now(),constraints=[SQL('DEFAULT CURRENT_TIMESTAMP')])
+	top_tip_month = IntegerField(default=0, constraints=[SQL('DEFAULT 0')])
+	top_tip_month_ts = DateTimeField(default=datetime.datetime.now(), constraints=[SQL('DEFAULT CURRENT_TIMESTAMP')])
+	top_tip_day = IntegerField(default=0, constraints=[SQL('DEFAULT 0')])
+	top_tip_day_ts = DateTimeField(default=datetime.datetime.now(),constraints=[SQL('DEFAULT CURRENT_TIMESTAMP')])
 	ticket_count = IntegerField(default=0, constraints=[SQL('DEFAULT 0')])
 	last_withdraw = DateTimeField(default=datetime.datetime.now(), constraints=[SQL('DEFAULT CURRENT_TIMESTAMP')])
 	stats_ban = BooleanField(default=False, constraints=[SQL('DEFAULT 0')])

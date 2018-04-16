@@ -26,7 +26,7 @@ import paginator
 
 logger = util.get_logger("main")
 
-BOT_VERSION = "2.0.1"
+BOT_VERSION = "2.0.2"
 
 # How many users to display in the top users count
 TOP_TIPPERS_COUNT=15
@@ -583,7 +583,7 @@ async def do_tip(message, random=False):
 			# Remove bots from consideration
 			for a in active:
 				dmember = message.guild.get_member(int(a))
-				if dmember.bot:
+				if dmember is None or dmember.bot:
 					active.remove(a)
 			shuffle(active)
 			offset = randint(0, len(active) - 1)
