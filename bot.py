@@ -26,7 +26,7 @@ import paginator
 
 logger = util.get_logger("main")
 
-BOT_VERSION = "2.0.2"
+BOT_VERSION = "2.1"
 
 # How many users to display in the top users count
 TOP_TIPPERS_COUNT=15
@@ -160,6 +160,15 @@ TIP_FAVORITES_INFO=("Tip everybody in your favorites list specified amount" +
 		"\nExample: `banfavorites 1000` Distributes 1000 to your entire favorites list (similar to tipsplit)")
 TIP_AUTHOR_CMD="%sbanauthor, takes: amount" % COMMAND_PREFIX
 TIP_AUTHOR_OVERVIEW="Donate to the author of this bot :yellow_heart:"
+MUTE_CMD="%smute, takes: user id" % COMMAND_PREFIX
+MUTE_OVERVIEW="Block tip notifications when sent by this user"
+MUTE_INFO=MUTE_OVERVIEW
+UNMUTE_CMD="%sunmute, takes: user id" % COMMAND_PREFIX
+UNMUTE_OVERVIEW="Unblock tip notificaitons sent by this user"
+UNMUTE_INFO=UNMUTE_OVERVIEW
+MUTED_CMD="%smuted" % COMMAND_PREFIX
+MUTED_OVERVIEW="View list of users you have muted"
+MUTED_INFO=MUTED_OVERVIEW
 BOT_DESCRIPTION=("BananoBot++ v%s - An open source BANANO tip bot for Discord\n" +
 		"Developed by bbedward - Feel free to send suggestions, ideas, and/or tips\n") % BOT_VERSION
 BALANCE_TEXT=(	"```Actual Balance   : %.2f BANANO\n" +
@@ -393,6 +402,9 @@ def build_help(page):
 		entries.append(paginator.Entry(LEADERBOARD_CMD,LEADERBOARD_OVERVIEW))
 		entries.append(paginator.Entry(TOPTIPS_CMD,TOPTIPS_OVERVIEW))
 		entries.append(paginator.Entry(STATS_CMD,STATS_OVERVIEW))
+		entries.append(paginator.Entry(MUTE_CMD, MUTE_OVERVIEW))
+		entries.append(paginator.Entry(UNMUTE_CMD, UNMUTE_OVERVIEW))
+		entries.append(paginator.Entry(MUTED_CMD, MUTED_OVERVIEW))
 		author=AUTHOR_HEADER
 		title="Command Overview"
 		return paginator.Page(entries=entries, title=title,author=author)
@@ -442,6 +454,14 @@ def build_help(page):
 		return paginator.Page(entries=entries, author=author,description=description)
 	elif page == 6:
 		entries = []
+		entries.append(paginator.Entry(MUTE_CMD, MUTE_INFO))
+		entries.append(paginator.Entry(UNMUTE_CMD, UNMUTE_INFO))
+		entries.append(paginator.Entry(MUTED_CMD, MUTED_INFO))
+		author="Notification Settings"
+		description="Handle how tip bot gives you notifications"
+		return paginator.Page(entries=entries, author=author, description=description)
+	elif page == 7:
+		entries = []
 		entries.append(paginator.Entry(TIP_AUTHOR_CMD,TIP_AUTHOR_OVERVIEW))
 		author=AUTHOR_HEADER + " - by bbedward"
 		description=("**Reviews**:\n" + "'10/10 True Masterpiece' - Harambe" +
@@ -463,6 +483,7 @@ async def help(ctx):
 	pages.append(build_help(4))
 	pages.append(build_help(5))
 	pages.append(build_help(6))
+	pages.append(build_help(7))
 	try:
 		pages = paginator.Paginator(client, message=message, page_list=pages,as_dm=True)
 		await pages.paginate(start_page=1)
@@ -1213,6 +1234,92 @@ async def favorites(ctx):
 		for e in entries:
 			embed.add_field(name=e.name,value=e.value,inline=False)
 		await message.author.send(embed=embed)
+
+@client.command()
+async def muted(ctx):
+	message = ctx.message
+	user = db.get_user_by_id(message.author.id)
+	if user is None:
+		return
+	muted = db.get_muted(message.author.id)
+	if len(muted) == 0:
+		embed = discord.Embed(colour=discord.Colour.red())
+		embed.title="Nobody Muted"
+		embed.description="Nobody is muted. You can mute people with `%smute discord_id`" % COMMAND_PREFIX
+		await message.author.send(embed=embed)
+		return
+	title="Muted List"
+	description=("This is your muted list. You can still receive tips from these people, but the bot will not PM you " +
+			   "when you receive a tip from them.")
+	entries = []
+	idx = 1
+	for m in muted:
+		name = str(idx) + ": " + m['name']
+		value = "You can unmute with person with `%sunmute %s`" % (COMMAND_PREFIX, m['id'])
+		entries.append(paginator.Entry(name,value))
+		idx += 1
+
+	# Do paginator for favorites > 10
+	if len(entries) > 10:
+		pages = paginator.Paginator.format_pages(entries=entries,title=title,description=description)
+		p = paginator.Paginator(client,message=message,page_list=pages,as_dm=True)
+		await p.paginate(start_page=1)
+	else:
+		embed = discord.Embed(colour=discord.Colour.teal())
+		embed.title = title
+		embed.description = description
+		for e in entries:
+			embed.add_field(name=e.name,value=e.value,inline=False)
+		await message.author.send(embed=embed)
+
+@client.command()
+async def mute(ctx):
+	message = ctx.message
+	if not is_private(message.channel):
+		return
+	user = db.get_user_by_id(message.author.id)
+	if user is None:
+		return
+	muted_count = 0
+	mute_ids = []
+	for c in message.content.split(' '):
+		try:
+			id=int(c.strip())
+			mute_ids.append(id)
+		except ValueError as e:
+			pass
+	for id in mute_ids:
+		target = db.get_user_by_id(id)
+		if target is not None and db.mute(user.user_id, target.user_id, target.user_name):
+			muted_count += 1
+	if muted_count > 0:
+		await post_dm(message.author, "%d users have been muted!", muted_count)
+	else:
+		await post_dm(message.author, "I couldn't find any users to mute in your message. They probably are already muted or they aren't registered with me")
+
+@client.command()
+async def unmute(ctx):
+	message = ctx.message
+	if not is_private(message.channel):
+		return
+	user = db.get_user_by_id(message.author.id)
+	if user is None:
+		return
+	unmute_count = 0
+	unmute_ids = []
+	for c in message.content.split(' '):
+		try:
+			id=int(c.strip())
+			unmute_ids.append(id)
+		except ValueError as e:
+			pass
+	for id in unmute_ids:
+		if db.unmute(user.user_id,id) > 0:
+			unmute_count += 1
+	if unmute_count > 0:
+		await post_dm(message.author, "%d users have been unmuted!", unmute_count)
+	else:
+		await post_dm(message.author, "I couldn't find anybody in your message to unmut!")
 
 @client.command()
 async def banned(ctx):

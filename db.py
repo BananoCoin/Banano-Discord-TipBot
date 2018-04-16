@@ -627,6 +627,37 @@ def get_favorites_list(user_id):
 		return_data.append({'user_id':fav.favorite_id,'id': fav.identifier})
 	return return_data
 
+# Returns list of muted for user id
+def get_muted(user_id):
+	user_id = str(user_id)
+	muted = MutedList.select().where(MutedList.user_id==user_id)
+	return_data = []
+	for m in muted:
+		return_data.append({'name':m.muted_name, 'id': m.muted_id})
+	return return_data
+
+# Return True if muted
+def muted(source_user, target_user):
+	source_user = str(source_user)
+	target_user = str(target_user)
+	return MutedList.select().where((MutedList.user_id==source_user) & (MutedList.muted_id==target_user)).count() > 0
+
+# Return false if already muted, True if muted
+def mute(source_user, target_user, target_name):
+	if muted(source_user, target_user):
+		return False
+	source_user = str(source_user)
+	target_user = str(target_user)
+	mute = MutedList(user_id=source_user,muted_id=target_user,muted_name=target_name)
+	mute.save()
+	return True
+
+# Return a number > 0 if user was unmuted
+def unmute(source_user, target_user):
+	source_user = str(source_user)
+	target_user = str(target_user)
+	return MutedList.delete().where((MutedList.user_id==source_user) & (MutedList.muted_id==target_user)).execute()
+
 # User table
 class User(Model):
 	user_id = CharField(unique=True)
@@ -711,9 +742,19 @@ class UserFavorite(Model):
 	class Meta:
 		database = db
 
+# Muted management
+class MutedList(Model):
+	user_id = CharField()
+	muted_id = CharField()
+	muted_name = CharField()
+	created = DateTimeField(default=datetime.datetime.now(),constraints=[SQL('DEFAULT CURRENT_TIMESTAMP')])
+
+	class Meta:
+		database = db
+
 def create_db():
 	db.connect()
-	db.create_tables([User, Transaction, Giveaway, Contestant, BannedUser, UserFavorite], safe=True)
+	db.create_tables([User, Transaction, Giveaway, Contestant, BannedUser, UserFavorite, MutedList], safe=True)
 	logger.debug("DB Connected")
 
 create_db()
