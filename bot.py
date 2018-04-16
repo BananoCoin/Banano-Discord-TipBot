@@ -1415,6 +1415,12 @@ async def react_to_message(message, amount):
 	if amount > 0:
 		await message.add_reaction('\:tip:425878628119871488') # TIP mark
 		await message.add_reaction('\:tick:425880814266351626') # check mark
+	if amount > 0 and amount < 50:
+		await message.add_reaction('\U0001F987') # S
+	elif amount >= 50 and amount < 250:
+		await message.add_reaction('\U0001F412') # C
+	elif amount >= 250:
+		await message.add_reaction('\U0001F98D') # W
 
 # Start the bot
 client.run(settings.discord_bot_token)
