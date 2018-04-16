@@ -180,7 +180,7 @@ DEPOSIT_TEXT_2="%s"
 DEPOSIT_TEXT_3="QR: %s"
 INSUFFICIENT_FUNDS_TEXT="You don't have enough BANANO in your available balance!"
 TIP_ERROR_TEXT="Something went wrong with the tip. I wrote to logs."
-TIP_RECEIVED_TEXT="You were tipped %d BANANO by %s"
+TIP_RECEIVED_TEXT="You were tipped %d BANANO by %s You can mute tip notifications from this person using `" + COMMAND_PREFIX + "mute %d`"
 TIP_SELF="No valid recipients found in your tip.\n(You cannot tip yourself and certain other users are exempt from receiving tips)"
 WITHDRAW_SUCCESS_TEXT="Withdraw has been queued for processing, I'll send you a link to the transaction after I've broadcasted it to the network!"
 WITHDRAW_PROCESSED_TEXT="Withdraw processed:\nTransaction: https://vault.banano.co.in/transaction/%s\nIf you have an issue with a withdraw please wait 24 hours before contacting me, the issue will likely resolve itself."
@@ -633,7 +633,8 @@ async def do_tip(message, random=False):
 				if random:
 					msg += ". You were randomly chosen by %s's `tiprandom`" % message.author.name
 					await post_dm(message.author, "%s was the recipient of your random %d BANANO tip", member.name, actual_amt, skip_dnd=True)
-				await post_dm(member, msg, actual_amt, message.author.name, skip_dnd=True)
+				if not db.muted(member.id, message.author.id):
+					await post_dm(member, msg, actual_amt, message.author.name, message.author.id, skip_dnd=True)
 		# Post message reactions
 		await react_to_message(message, required_amt)
 		# Update tip stats
@@ -730,7 +731,8 @@ async def do_tipsplit(message, user_list=None):
 			if actual_amt == 0:
 				amount -= tip_amount
 			else:
-				await post_dm(member, TIP_RECEIVED_TEXT, tip_amount, message.author.name, skip_dnd=True)
+				if not db.muted(member.id, message.author.id):
+					await post_dm(member, TIP_RECEIVED_TEXT, tip_amount, message.author.name, message.author.id, skip_dnd=True)
 		await react_to_message(message, amount)
 		if message.channel.id != 416306340848336896:
 			db.update_tip_stats(user, real_amount)
@@ -811,7 +813,8 @@ async def rain(ctx):
 			if actual_amt == 0:
 				amount -= tip_amount
 			else:
-				await post_dm(member, TIP_RECEIVED_TEXT, actual_amt, message.author.name)
+				if not db.muted(member.id, message.author.id):
+					await post_dm(member, TIP_RECEIVED_TEXT, actual_amt, message.author.name, message.author.id)
 
 		# Message React
 		await react_to_message(message, amount)
