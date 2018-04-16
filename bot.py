@@ -469,20 +469,19 @@ async def help(ctx):
 	except paginator.CannotPaginate as e:
 		logger.exception(str(e))
 
-@client.command()
+@client.command(aliases=['bal', '$'])
 async def balance(ctx):
 	message = ctx.message
 	if is_private(message.channel):
 		user = db.get_user_by_id(message.author.id)
 		if user is None:
 			return
-		bal_msg = await post_response(message, "Retrieving balance...")
 		balances = await wallet.get_balance(user)
 		actual = balances['actual']
 		available = balances['available']
 		send = balances['pending_send']
 		receive = balances['pending']
-		await post_edit(bal_msg, BALANCE_TEXT, actual, available, send, receive)
+		await post_response(message, BALANCE_TEXT, actual, available, send, receive)
 
 @client.command(aliases=['register'])
 async def deposit(ctx):
@@ -541,11 +540,11 @@ async def withdraw(ctx):
 			elif e.error_type == "error":
 				await post_response(message, WITHDRAW_ERROR_TEXT)
 
-@client.command()
+@client.command(aliases=['b'])
 async def ban(ctx):
 	await do_tip(ctx.message)
 
-@client.command()
+@client.command(aliases=['br', 'banrando', 'banran'])
 async def banrandom(ctx):
 	await do_tip(ctx.message, random=True)
 
@@ -657,7 +656,7 @@ async def banauthor(ctx):
 	except util.TipBotException as e:
 		pass
 
-@client.command()
+@client.command(aliases=['bs', 'bananosplit'])
 async def bansplit(ctx):
 	await do_tipsplit(ctx.message)
 
@@ -727,7 +726,7 @@ async def do_tipsplit(message, user_list=None):
 		else:
 			await post_response(message, TIP_ERROR_TEXT)
 
-@client.command(aliases=['banfavorite', 'banfavourite', 'banfavourites'])
+@client.command(aliases=['banfavorite', 'banfavourite', 'banfavourites', 'banfavs', 'banfav', 'bf'])
 async def banfavorites(ctx):
 	message = ctx.message
 	user = db.get_user_by_id(message.author.id)
@@ -744,7 +743,7 @@ async def banfavorites(ctx):
 			user_list.append(discord_user)
 	await do_tipsplit(message, user_list=user_list)
 
-@client.command()
+@client.command(aliases=['r'])
 async def rain(ctx):
 	message = ctx.message
 	if is_private(message.channel):
@@ -808,7 +807,7 @@ async def rain(ctx):
 		else:
 			await post_response(message, TIP_ERROR_TEXT)
 
-@client.command(aliases=['entergiveaway'])
+@client.command(aliases=['entergiveaway', 'enter', 'e'])
 async def ticket(ctx):
 	message = ctx.message
 	if not db.is_active_giveaway():
@@ -913,7 +912,7 @@ async def giveaway(ctx):
 		if e.error_type == "amount_not_found" or e.error_type == "usage_error":
 			await post_usage(message, START_GIVEAWAY_CMD, START_GIVEAWAY_INFO)
 
-@client.command(aliases=['bangiveaway'])
+@client.command(aliases=['bangiveaway', 'd'])
 async def donate(ctx):
 	await tip_giveaway(ctx.message)
 
@@ -997,7 +996,7 @@ async def ticketstatus(ctx):
 		await post_dm(message.author, db.get_ticket_status(message.author.id))
 	await remove_message(message)
 
-@client.command(aliases=['goldenticket'])
+@client.command(aliases=['goldenticket', 'gstats'])
 async def giveawaystats(ctx):
 	message = ctx.message
 	stats = db.get_giveaway_stats()
@@ -1134,7 +1133,7 @@ async def tipstats(ctx):
 		return
 	await post_response(message, STATS_TEXT, tip_stats['rank'], tip_stats['total'], tip_stats['average'],tip_stats['top'])
 
-@client.command(aliases=['addfavourite', 'addfavorites', 'addfavourites'])
+@client.command(aliases=['addfavourite', 'addfavorites', 'addfavourites', 'addfav'])
 async def addfavorite(ctx):
 	message = ctx.message
 	user = db.get_user_by_id(message.author.id)
@@ -1150,7 +1149,7 @@ async def addfavorite(ctx):
 	else:
 		await post_dm(message.author, "I couldn't find any users to add as favorites in your message! They may already be in your favorites or they may not have accounts with me")
 
-@client.command(aliases=['removefavourite', 'removefavorites', 'removefavourites'])
+@client.command(aliases=['removefavourite', 'removefavorites', 'removefavourites', 'removefav'])
 async def removefavorite(ctx):
 	message = ctx.message
 	user = db.get_user_by_id(message.author.id)
@@ -1179,7 +1178,7 @@ async def removefavorite(ctx):
 	else:
 		await post_dm(message.author, "I couldn't find anybody in your message to remove from your favorites!")
 
-@client.command(aliases=['favourites'])
+@client.command(aliases=['favourites', 'favs'])
 async def favorites(ctx):
 	message = ctx.message
 	user = db.get_user_by_id(message.author.id)
