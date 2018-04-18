@@ -86,7 +86,7 @@ def get_tip_stats(user_id):
 	user = get_user_by_id(user_id)
 	if user is None:
 		return None
-	rank = User.select().where(User.tipped_amount > user.tipped_amount).count() + 1
+	rank = User.select().where((User.tipped_amount > user.tipped_amount) & (User.stats_ban == False)).count() + 1
 	if not user.stats_ban:
 		tipped_amount = user.tipped_amount
 		tip_count = user.tip_count

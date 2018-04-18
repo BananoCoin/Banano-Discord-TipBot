@@ -26,7 +26,7 @@ import paginator
 
 logger = util.get_logger("main")
 
-BOT_VERSION = "2.1.1"
+BOT_VERSION = "2.1.2"
 
 # How many users to display in the top users count
 TOP_TIPPERS_COUNT=15
@@ -217,12 +217,6 @@ TIP_FAVORITES = {
                 "\nExample: `banfavorites 1000` Distributes 1000 to your entire favorites list (similar to tipsplit)"),
 }
 
-TIP_AUTHOR = {
-	"CMD" 	   : "%sbanauthor, takes: amount" % COMMAND_PREFIX,
-	"OVERVIEW" : "Donate to the author of this bot :yellow_heart:",
-	"INFO" 	   : "The author is BBedward but there was no INFO property here so I added this as an easter egg. Cheers, Newguyneal",
-}
-
 MUTE = {
 	"CMD" 	   : "%smute, takes: user id" % COMMAND_PREFIX,
 	"OVERVIEW" : "Block tip notifications when sent by this user",
@@ -247,8 +241,7 @@ COMMANDS = {
     "GIVEAWAY_COMMANDS"     : [START_GIVEAWAY, ENTER, TIPGIVEAWAY, TICKETSTATUS],
     "STATISTICS_COMMANDS"   : [GIVEAWAY_STATS, WINNERS, LEADERBOARD, TOPTIPS,STATS],
     "FAVORITES_COMMANDS"    : [ADD_FAVORITE, DEL_FAVORITE, FAVORITES, TIP_FAVORITES],
-    "NOTIFICATION_COMMANDS" : [MUTE, UNMUTE, MUTED],
-    "AUTHOR_COMMANDS"       : [TIP_AUTHOR],
+    "NOTIFICATION_COMMANDS" : [MUTE, UNMUTE, MUTED]
 }
 #Text Templates
 BOT_DESCRIPTION=("BananoBot++ v%s - An open source BANANO tip bot for Discord\n" +
@@ -517,7 +510,6 @@ def build_help(page):
 		return paginator.Page(entries=entries, author=author, description=description)
 	elif page == 7:
 		entries = []
-		entries.append(paginator.Entry(TIP_AUTHOR_CMD,TIP_AUTHOR_OVERVIEW))
 		author=AUTHOR_HEADER + " - by bbedward"
 		description=("**Reviews**:\n" + "'10/10 True Masterpiece' - Harambe" +
 				"\n'0/10 Didn't get rain' - Almost everybody else\n\n" +
@@ -699,45 +691,18 @@ async def do_tip(message, random=False):
 		# Post message reactions
 		await react_to_message(message, required_amt)
 		# Update tip stats
-		if message.channel.id != 416306340848336896:
+		if message.channel.id != 416306340848336896 & not user.stats_ban:
 			db.update_tip_stats(user, required_amt)
 	except util.TipBotException as e:
 		if e.error_type == "amount_not_found" or e.error_type == "usage_error":
 			if random:
-				await post_usage(message, TIPRANDOM_CMD, TIPRANDOM_INFO)
+				await post_usage(message, TIPRANDOM)
 			else:
-				await post_usage(message, TIP_CMD, TIP_INFO)
+				await post_usage(message, TIP)
 		elif e.error_type == "no_valid_recipient":
 			await post_dm(message.author, TIP_SELF)
 		else:
 			await post_response(message, TIP_ERROR_TEXT)
-
-@client.command()
-async def banauthor(ctx):
-	message = ctx.message
-	try:
-		amount = find_amount(message.content)
-		if amount < 1:
-			return
-		user = db.get_user_by_id(message.author.id)
-		if user is None:
-			return
-		source_id = user.user_id
-		source_address = user.wallet_address
-		balance = await wallet.get_balance(user)
-		available_balance = balance['available']
-		if amount > available_balance:
-			return
-		uid = str(uuid.uuid4())
-		await wallet.make_transaction_to_address(user, amount, "ban_3jb1fp4diu79wggp7e171jdpxp95auji4moste6gmc55pptwerfjqu48okse", uid,verify_address = True)
-		await message.add_reaction('\U0001F34C')
-		await message.add_reaction('\U0001F618')
-		await message.add_reaction('\U0001F49B')
-		await message.add_reaction('\U0001F49B')
-		await message.add_reaction('\U0001F49B')
-		db.update_tip_stats(user, amount)
-	except util.TipBotException as e:
-		pass
 
 @client.command(aliases=['bs', 'bananosplit'])
 async def bansplit(ctx):
@@ -795,14 +760,14 @@ async def do_tipsplit(message, user_list=None):
 				if not db.muted(member.id, message.author.id):
 					await post_dm(member, TIP_RECEIVED_TEXT, tip_amount, message.author.name, message.author.id, skip_dnd=True)
 		await react_to_message(message, amount)
-		if message.channel.id != 416306340848336896:
+		if message.channel.id != 416306340848336896 & not user.stats_ban:
 			db.update_tip_stats(user, real_amount)
 	except util.TipBotException as e:
 		if e.error_type == "amount_not_found" or e.error_type == "usage_error":
 			if user_list is None:
-				await post_usage(message, TIPSPLIT_CMD, TIPSPLIT_INFO)
+				await post_usage(message, TIPSPLIT)
 			else:
-				await post_usage(message, TIP_FAVORITES_CMD, TIP_FAVORITES_INFO)
+				await post_usage(message, TIP_FAVORITES)
 		elif e.error_type == "invalid_tipsplit":
 			await post_dm(message.author, TIPSPLIT_SMALL)
 		elif e.error_type == "no_valid_recipient":
@@ -886,11 +851,12 @@ async def rain(ctx):
 		# Message React
 		await react_to_message(message, amount)
 		await message.add_reaction('\:bananorain:430826677543895050') # Sweat Drops
-		db.update_tip_stats(user, real_amount,rain=True)
+		if not user.stats_ban:
+			db.update_tip_stats(user, real_amount,rain=True)
 		db.mark_user_active(user)
 	except util.TipBotException as e:
 		if e.error_type == "amount_not_found" or e.error_type == "usage_error":
-			await post_usage(message, RAIN_CMD, RAIN_INFO)
+			await post_usage(message, RAIN)
 		elif e.error_type == "no_valid_recipient":
 			await post_dm(message.author, RAIN_NOBODY)
 		elif e.error_type == "invalid_tipsplit":
@@ -1001,7 +967,7 @@ async def giveaway(ctx):
 			await post_dm(await client.get_user_info(int(d)), GIVEAWAY_FEE_TOO_HIGH)
 	except util.TipBotException as e:
 		if e.error_type == "amount_not_found" or e.error_type == "usage_error":
-			await post_usage(message, START_GIVEAWAY_CMD, START_GIVEAWAY_INFO)
+			await post_usage(message, START_GIVEAWAY)
 
 @client.command(aliases=['bangiveaway', 'd'])
 async def donate(ctx):
@@ -1071,13 +1037,14 @@ async def tip_giveaway(message, ticket=False):
 				await post_response(message, GIVEAWAY_STARTED_FEE, client.user.name, nano_amt, fee, fee)
 				asyncio.get_event_loop().create_task(start_giveaway_timer())
 		# Update top tipY
-		db.update_tip_stats(user, amount, giveaway=True)
+		if not user.stats_ban:
+			db.update_tip_stats(user, amount, giveaway=True)
 	except util.TipBotException as e:
 		if e.error_type == "amount_not_found" or e.error_type == "usage_error":
 			if ticket:
-				await post_usage(message, ENTER_CMD, ENTER_INFO)
+				await post_usage(message, ENTER)
 			else:
-				await post_usage(message, TIPGIVEAWAY_CMD, TIPGIVEAWAY_INFO)
+				await post_usage(message, TIPGIVEAWAY)
 
 @client.command()
 async def ticketstatus(ctx):
@@ -1555,10 +1522,10 @@ async def post_response(message, template, *args, incl_mention=True, mention_id=
 	asyncio.sleep(0.05) # Slight delay to avoid discord bot responding above commands
 	return await message.channel.send(response)
 
-async def post_usage(message, command, description):
+async def post_usage(message, command):
 	embed = discord.Embed(colour=discord.Colour.purple())
 	embed.title = "Usage:"
-	embed.add_field(name=command, value=description,inline=False)
+	embed.add_field(name=command['CMD'], value=command['INFO'],inline=False)
 	await message.author.send(embed=embed)
 
 async def post_dm(member, template, *args, skip_dnd=False):
