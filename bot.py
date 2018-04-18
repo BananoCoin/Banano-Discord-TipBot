@@ -260,7 +260,6 @@ TIP_SELF="No valid recipients found in your tip.\n(You cannot tip yourself and c
 WITHDRAW_SUCCESS_TEXT="Withdraw has been queued for processing, I'll send you a link to the transaction after I've broadcasted it to the network!"
 WITHDRAW_PROCESSED_TEXT="Withdraw processed:\nTransaction: https://vault.banano.co.in/transaction/%s\nIf you have an issue with a withdraw please wait 24 hours before contacting me, the issue will likely resolve itself."
 WITHDRAW_NO_BALANCE_TEXT="You have no BANANO to withdraw"
-WITHDRAW_ADDRESS_NOT_FOUND_TEXT="Usage:\n```" + WITHDRAW_INFO + "```"
 WITHDRAW_INVALID_ADDRESS_TEXT="Withdraw address is not valid"
 WITHDRAW_ERROR_TEXT="Something went wrong ! :thermometer_face: "
 WITHDRAW_COOLDOWN_TEXT="You need to wait %d seconds before making another withdraw"
@@ -600,7 +599,7 @@ async def withdraw(ctx):
 				db.update_last_withdraw(user.user_id)
 		except util.TipBotException as e:
 			if e.error_type == "address_not_found":
-				await post_response(message, WITHDRAW_ADDRESS_NOT_FOUND_TEXT)
+				await post_usage(message, WITHDRAW)
 			elif e.error_type == "invalid_address":
 				await post_response(message, WITHDRAW_INVALID_ADDRESS_TEXT)
 			elif e.error_type == "balance_error":
@@ -691,7 +690,7 @@ async def do_tip(message, random=False):
 		# Post message reactions
 		await react_to_message(message, required_amt)
 		# Update tip stats
-		if message.channel.id != 416306340848336896 & not user.stats_ban:
+		if message.channel.id != 416306340848336896 and not user.stats_ban:
 			db.update_tip_stats(user, required_amt)
 	except util.TipBotException as e:
 		if e.error_type == "amount_not_found" or e.error_type == "usage_error":
@@ -760,7 +759,7 @@ async def do_tipsplit(message, user_list=None):
 				if not db.muted(member.id, message.author.id):
 					await post_dm(member, TIP_RECEIVED_TEXT, tip_amount, message.author.name, message.author.id, skip_dnd=True)
 		await react_to_message(message, amount)
-		if message.channel.id != 416306340848336896 & not user.stats_ban:
+		if message.channel.id != 416306340848336896 and not user.stats_ban:
 			db.update_tip_stats(user, real_amount)
 	except util.TipBotException as e:
 		if e.error_type == "amount_not_found" or e.error_type == "usage_error":
@@ -1046,7 +1045,7 @@ async def tip_giveaway(message, ticket=False):
 			else:
 				await post_usage(message, TIPGIVEAWAY)
 
-@client.command()
+@client.command(aliases=['ts'])
 async def ticketstatus(ctx):
 	message = ctx.message
 	user = db.get_user_by_id(message.author.id)
@@ -1189,6 +1188,8 @@ async def tipstats(ctx):
 	if tip_stats is None or len(tip_stats) == 0:
 		await post_response(message, STATS_ACCT_NOT_FOUND_TEXT)
 		return
+	if tip_stats['rank'] == -1:
+		tip_stats['rank'] = 'N/A'
 	await post_response(message, STATS_TEXT, tip_stats['rank'], tip_stats['total'], tip_stats['average'],tip_stats['top'])
 
 @client.command(aliases=['addfavourite', 'addfavorites', 'addfavourites', 'addfav'])

@@ -95,6 +95,7 @@ def get_tip_stats(user_id):
 		tipped_amount = 0
 		tip_count = 0
 		top_tip = 0
+		rank = -1
 	if tip_count == 0:
 		average = 0
 	else:
