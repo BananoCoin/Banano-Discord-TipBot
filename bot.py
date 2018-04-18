@@ -4,7 +4,7 @@ from discord.ext.commands import Bot
 import threading
 from threading import Thread
 from queue import Queue
-from random import shuffle
+import random
 import secrets
 import subprocess
 import atexit
@@ -613,9 +613,9 @@ async def ban(ctx):
 
 @client.command(aliases=['br', 'banrando', 'banran'])
 async def banrandom(ctx):
-	await do_tip(ctx.message, random=True)
+	await do_tip(ctx.message, rand=True)
 
-async def do_tip(message, random=False):
+async def do_tip(message, rand=False):
 	if is_private(message.channel):
 		return
 	elif paused:
@@ -627,14 +627,14 @@ async def do_tip(message, random=False):
 		if user is None:
 			return
 		amount = find_amount(message.content)
-		if random and amount < settings.tiprandom_minimum:
+		if rand and amount < settings.tiprandom_minimum:
 			raise util.TipBotException("usage_error")
 		# Make sure amount is valid and at least 1 user is mentioned
-		if amount < 1 or (len(message.mentions) < 1 and not random):
+		if amount < 1 or (len(message.mentions) < 1 and not rand):
 			raise util.TipBotException("usage_error")
 		# Create tip list
 		users_to_tip = []
-		if not random:
+		if not rand:
 			for member in message.mentions:
 				# Disregard mentions of exempt users and self
 				if member.id not in settings.exempt_users and member.id != message.author.id and not db.is_banned(member.id) and not member.bot:
@@ -660,7 +660,8 @@ async def do_tip(message, random=False):
 				dmember = message.guild.get_member(int(a))
 				if dmember is None or dmember.bot:
 					active.remove(a)
-			shuffle(active)
+			sysrand = random.SystemRandom()
+			sysrand.shuffle(active)
 			offset = secrets.randbelow(len(active))
 			users_to_tip.append(message.guild.get_member(int(active[offset])))
 		# Cut out duplicate mentions
@@ -682,7 +683,7 @@ async def do_tip(message, random=False):
 				required_amt -= amount
 			else:
 				msg = TIP_RECEIVED_TEXT
-				if random:
+				if rand:
 					msg += ". You were randomly chosen by %s's `tiprandom`" % message.author.name
 					await post_dm(message.author, "%s was the recipient of your random %d BANANO tip", member.name, actual_amt, skip_dnd=True)
 				if not db.muted(member.id, message.author.id):

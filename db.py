@@ -363,11 +363,12 @@ def get_statsbanned():
 
 # Returns winning user
 def finish_giveaway():
-	contestants = Contestant.select(Contestant.user_id).where(Contestant.banned == False).order_by(fn.Random())
+	contestants = Contestant.select(Contestant.user_id).where(Contestant.banned == False)
 	contestant_ids = []
 	for c in contestants:
 		contestant_ids.append(c.user_id)
-	random.shuffle(contestant_ids)
+	sysrand = random.SystemRandom()
+	sysrand.shuffle(contestant_ids)
 	offset = secrets.randbelow(len(contestant_ids))
 	winner = get_user_by_id(contestant_ids[offset])
 	Contestant.delete().execute()
