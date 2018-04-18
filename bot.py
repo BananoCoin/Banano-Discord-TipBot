@@ -850,8 +850,7 @@ async def rain(ctx):
 		# Message React
 		await react_to_message(message, amount)
 		await message.add_reaction('\:bananorain:430826677543895050') # Sweat Drops
-		if not user.stats_ban:
-			db.update_tip_stats(user, real_amount,rain=True)
+		db.update_tip_stats(user, real_amount,rain=True)
 		db.mark_user_active(user)
 	except util.TipBotException as e:
 		if e.error_type == "amount_not_found" or e.error_type == "usage_error":
