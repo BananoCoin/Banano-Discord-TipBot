@@ -112,48 +112,48 @@ TIPRANDOM = {
 	"CMD"      : "%sbanrandom, takes: amount" % COMMAND_PREFIX,
 	"OVERVIEW" : "Tips a random active user",
 	"INFO"     : ("Tips amount to a random active user. Active user list picked using same logic as rain" +
-				"\n**Minimum banrandom amount: %d BANANO**") % settings.tiprandom_minimum ,
+                "\n**Minimum banrandom amount: %d BANANO**") % settings.tiprandom_minimum ,
 }
 
 RAIN = {
 	"CMD"      : "%srain, takes: amount" % COMMAND_PREFIX,
 	"OVERVIEW" : "Split tip among all active* users",
 	"INFO"     : ("Distribute <amount> evenly to users who are eligible.\n" +
-				"Eligibility is determined based on your *recent* activity **and** contributions to public channels. " +
-				"Several factors are considered in picking who receives rain. If you aren't receiving it, you aren't contributing enough or your contributions are low-quality/spammy.\n" +
-				"Note: Users who have a status of 'offline' or 'do not disturb' do not receive rain.\n" +
-				"Example: `rain 1000` - distributes 1000 evenly to eligible users (similar to `bansplit`)" +
-				"\n**Minimum rain amount: %d BANANO**") % (RAIN_MINIMUM),
+                "Eligibility is determined based on your *recent* activity **and** contributions to public channels. " +
+                "Several factors are considered in picking who receives rain. If you aren't receiving it, you aren't contributing enough or your contributions are low-quality/spammy.\n" +
+                "Note: Users who have a status of 'offline' or 'do not disturb' do not receive rain.\n" +
+                "Example: `rain 1000` - distributes 1000 evenly to eligible users (similar to `bansplit`)" +
+                "\n**Minimum rain amount: %d BANANO**") % (RAIN_MINIMUM),
 }
 
 START_GIVEAWAY = {
 	"CMD" 	   : "%sgiveaway, takes: amount, fee=(amount), duration=(minutes)" % (COMMAND_PREFIX),
 	"OVERVIEW" : "Sponsor a giveaway",
 	"INFO" 	   : ("Start a giveaway with given amount, entry fee, and duration." +
-				"\nEntry fees are added to the total prize pool" +
-				"\nGiveaway will end and choose random winner after (duration)" +
-				"\nExample: `giveaway 1000 fee=5 duration=30` - Starts a giveaway of 1000, with fee of 5, duration of 30 minutes" +
-				"\n**Minimum required to sponsor a giveaway: %d BANANO**" +
-				"\n**Minimum giveaway duration: %d minutes**" +
-				"\n**Maximum giveaway duration: %d minutes**") % (GIVEAWAY_MINIMUM, GIVEAWAY_MIN_DURATION, GIVEAWAY_MAX_DURATION),
+                "\nEntry fees are added to the total prize pool" +
+                "\nGiveaway will end and choose random winner after (duration)" +
+                "\nExample: `giveaway 1000 fee=5 duration=30` - Starts a giveaway of 1000, with fee of 5, duration of 30 minutes" +
+                "\n**Minimum required to sponsor a giveaway: %d BANANO**" +
+                "\n**Minimum giveaway duration: %d minutes**" +
+                "\n**Maximum giveaway duration: %d minutes**") % (GIVEAWAY_MINIMUM, GIVEAWAY_MIN_DURATION, GIVEAWAY_MAX_DURATION),
 }
 
 ENTER = {
 	"CMD"      : "%sticket, takes: fee (conditional)" % COMMAND_PREFIX,
 	"OVERVIEW" : "Enter the current giveaway",
 	"INFO" 	   : ("Enter the current giveaway, if there is one. Takes (fee) as argument only if there's an entry fee." +
-				"\n Fee will go towards the prize pool and be deducted from your available balance immediately" +
-				"\nExample: `ticket` (to enter a giveaway without a fee), `ticket 10` (to enter a giveaway with a fee of 10)"),
+                "\n Fee will go towards the prize pool and be deducted from your available balance immediately" +
+                "\nExample: `ticket` (to enter a giveaway without a fee), `ticket 10` (to enter a giveaway with a fee of 10)"),
 }
 
 TIPGIVEAWAY = {
 	"CMD" 	   : "%sdonate, takes: amount" % (COMMAND_PREFIX),
 	"OVERVIEW" : "Add to present or future giveaway prize pool",
 	"INFO" 	   : ("Add <amount> to the current giveaway pool\n"+
-				"If there is no giveaway, one will be started when minimum is reached." +
-				"\nTips >= %d BANANO automatically enter you for giveaways sponsored by the community." +
-				"\nDonations count towards the next giveaways entry fee" +
-				"\nExample: `donate 1000` - Adds 1000 to giveaway pool") % (TIPGIVEAWAY_AUTO_ENTRY),
+                "If there is no giveaway, one will be started when minimum is reached." +
+                "\nTips >= %d BANANO automatically enter you for giveaways sponsored by the community." +
+                "\nDonations count towards the next giveaways entry fee" +
+                "\nExample: `donate 1000` - Adds 1000 to giveaway pool") % (TIPGIVEAWAY_AUTO_ENTRY),
 }
 
 TICKETSTATUS = {
@@ -201,9 +201,9 @@ DEL_FAVORITE = {
 	"CMD"	   : "%sremovefavorite, takes: *users or favorite ID" % COMMAND_PREFIX,
 	"OVERVIEW" : "Removes users from your favorites list",
 	"INFO" 	   : ("Removes users from your favorites list. " +
-				"You can either @mention the user in a public channel or use the ID in your `favorites` list" +
-				"\nExample 1: `removefavorite @user1 @user2` - Removes user1 and user2 from your favorites" +
-				"\nExample 2: `removefavorite 1 6 3` - Removes favorites with ID : 1, 6, and 3"),
+                "You can either @mention the user in a public channel or use the ID in your `favorites` list" +
+                "\nExample 1: `removefavorite @user1 @user2` - Removes user1 and user2 from your favorites" +
+                "\nExample 2: `removefavorite 1 6 3` - Removes favorites with ID : 1, 6, and 3"),
 }
 FAVORITES = {
 	"CMD"	   : "%sfavorites" % COMMAND_PREFIX,
@@ -214,7 +214,7 @@ TIP_FAVORITES = {
 	"CMD" 	   : "%sbanfavorites, takes: amount" % COMMAND_PREFIX,
 	"OVERVIEW" : "Tip your entire favorites list",
 	"INFO" 	   : ("Tip everybody in your favorites list specified amount" +
-				"\nExample: `banfavorites 1000` Distributes 1000 to your entire favorites list (similar to tipsplit)"),
+                "\nExample: `banfavorites 1000` Distributes 1000 to your entire favorites list (similar to tipsplit)"),
 }
 
 TIP_AUTHOR = {
@@ -248,7 +248,7 @@ COMMANDS = {
     "STATISTICS_COMMANDS"   : [GIVEAWAY_STATS, WINNERS, LEADERBOARD, TOPTIPS,STATS],
     "FAVORITES_COMMANDS"    : [ADD_FAVORITE, DEL_FAVORITE, FAVORITES, TIP_FAVORITES],
     "NOTIFICATION_COMMANDS" : [MUTE, UNMUTE, MUTED],
-	"AUTHOR_COMMANDS" 		: [TIP_AUTHOR],
+    "AUTHOR_COMMANDS"       : [TIP_AUTHOR],
 }
 #Text Templates
 BOT_DESCRIPTION=("BananoBot++ v%s - An open source BANANO tip bot for Discord\n" +
