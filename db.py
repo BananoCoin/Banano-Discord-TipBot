@@ -745,7 +745,7 @@ class Giveaway(Model):
 
 # Giveaway Entrants
 class Contestant(Model):
-	user_id = CharField()
+	user_id = CharField(unique=True)
 	banned = BooleanField()
 
 	class Meta:
