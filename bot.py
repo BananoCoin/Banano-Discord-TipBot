@@ -1015,7 +1015,7 @@ async def tip_giveaway(message, ticket=False):
 			await react_to_message(message, amount)
 		# If eligible, add them to giveaway
 		if (amount + contributions) >= fee and not db.is_banned(message.author.id):
-			if (amount + contributions) >= (fee * 4):
+			if (amount + contributions) >= (TIPGIVEAWAY_AUTO_ENTRY * 4):
 				db.mark_user_active(user)
 			entered = db.add_contestant(message.author.id, override_ban=True)
 			if entered:
