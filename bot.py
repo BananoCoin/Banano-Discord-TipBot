@@ -118,7 +118,7 @@ TIPRANDOM = {
 RAIN = {
 	"CMD"      : "%srain, takes: amount" % COMMAND_PREFIX,
 	"OVERVIEW" : "Split tip among all active* users",
-    "INFO"     : ("Distribute <amount> evenly to users who are eligible.\n" +
+	"INFO"     : ("Distribute <amount> evenly to users who are eligible.\n" +
 				"Eligibility is determined based on your *recent* activity **and** contributions to public channels. " +
 				"Several factors are considered in picking who receives rain. If you aren't receiving it, you aren't contributing enough or your contributions are low-quality/spammy.\n"
 				"Note: Users who have a status of 'offline' or 'do not disturb' do not receive rain.\n" +
