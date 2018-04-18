@@ -5,7 +5,7 @@ import threading
 from threading import Thread
 from queue import Queue
 from random import shuffle
-from random import randint
+import secrets
 import subprocess
 import atexit
 import time
@@ -661,7 +661,7 @@ async def do_tip(message, random=False):
 				if dmember is None or dmember.bot:
 					active.remove(a)
 			shuffle(active)
-			offset = randint(0, len(active) - 1)
+			offset = secrets.randbelow(len(active))
 			users_to_tip.append(message.guild.get_member(int(active[offset])))
 		# Cut out duplicate mentions
 		users_to_tip = list(set(users_to_tip))

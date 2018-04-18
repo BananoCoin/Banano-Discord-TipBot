@@ -2,8 +2,8 @@ import re
 import datetime
 import util
 import settings
-from random import shuffle
-from random import randint
+import random
+import secrets
 from peewee import *
 from playhouse.sqliteq import SqliteQueueDatabase
 
@@ -18,7 +18,7 @@ LAST_MSG_RAIN_DELTA = 60
 LAST_MSG_RAIN_WORDS = 3
 
 # (Seconds) how long user must wait between tiprandom
-TIP_RANDOM_WAIT=30
+TIP_RANDOM_WAIT=10
 # (Seconds) how long user must wait between tipfavorites
 TIP_FAVORITES_WAIT=150
 
@@ -367,8 +367,8 @@ def finish_giveaway():
 	contestant_ids = []
 	for c in contestants:
 		contestant_ids.append(c.user_id)
-	shuffle(contestant_ids)
-	offset = randint(0, len(contestant_ids) - 1)
+	random.shuffle(contestant_ids)
+	offset = secrers.randbelow(len(contestant_ids))
 	winner = get_user_by_id(contestant_ids[offset])
 	Contestant.delete().execute()
 	giveaway = Giveaway.get(active=True)
