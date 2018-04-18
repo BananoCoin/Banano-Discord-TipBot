@@ -268,7 +268,7 @@ TOP_HEADER_TEXT="Here are the top %d tippers :clap:"
 TOP_HEADER_EMPTY_TEXT="The leaderboard is empty!"
 TOP_SPAM="No more ballers for %d seconds"
 STATS_ACCT_NOT_FOUND_TEXT="I could not find an account for you, try private messaging me `%sregister`" % COMMAND_PREFIX
-STATS_TEXT="You are rank #%d, you've tipped a total of %.2f BANANO, your average tip is %.2f BANANO, and your biggest tip of all time is %.2f BANANO"
+STATS_TEXT="You are rank #%s, you've tipped a total of %.2f BANANO, your average tip is %.2f BANANO, and your biggest tip of all time is %.2f BANANO"
 TIPSPLIT_SMALL="Tip amount is too small to be distributed to that many users"
 RAIN_NOBODY="I couldn't find anybody eligible to receive rain"
 GIVEAWAY_EXISTS="There's already an active giveaway"
@@ -1190,7 +1190,7 @@ async def tipstats(ctx):
 		return
 	if tip_stats['rank'] == -1:
 		tip_stats['rank'] = 'N/A'
-	await post_response(message, STATS_TEXT, tip_stats['rank'], tip_stats['total'], tip_stats['average'],tip_stats['top'])
+	await post_response(message, STATS_TEXT, str(tip_stats['rank']), tip_stats['total'], tip_stats['average'],tip_stats['top'])
 
 @client.command(aliases=['addfavourite', 'addfavorites', 'addfavourites', 'addfav'])
 async def addfavorite(ctx):
