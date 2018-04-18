@@ -476,7 +476,7 @@ def build_help(page):
 		]
 		for command_group in tmp_command_list:
 			for cmd in COMMANDS[command_group]:
-				entries.append(paginator.Entry(cmd["CMD"],cmd["OVERVIEW"])
+				entries.append(paginator.Entry(cmd["CMD"],cmd["OVERVIEW"]))
 		return paginator.Page(entries=entries, title=title,author=author)
 	elif page == 1:
 		author="Account Commands"
