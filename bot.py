@@ -70,7 +70,7 @@ BALANCE = {
 	"CMD"      : "%sbalance" % COMMAND_PREFIX,
     "OVERVIEW" : "Display balance of your account",
     "INFO"     : ("Displays the balance of your tip account (in BANANO) as described:" +
-			    "\nActual Balance: The actual balance in your tip account" +
+				"\nActual Balance: The actual balance in your tip account" +
 				"\nAvailable Balance: The balance you are able to tip with (Actual - Pending Send)" +
 				"\nPending Send: Tips you have sent, but have not yet been broadcasted to network" +
 				"\nPending Receipt: Tips that have been sent to you, but have not yet been pocketed by the node. " +
@@ -80,26 +80,26 @@ BALANCE = {
 DEPOSIT ={
 	"CMD"      : "%sdeposit or %sregister" % (COMMAND_PREFIX, COMMAND_PREFIX),
 	"OVERVIEW" : "Shows your account address",
-    "INFO"     :("Displays your tip bot account address along with a QR code" +
-			   "\n- Send BANANO to this address to increase your tip bot balance" +
-			   "\n- If you do not have a tip bot account yet, this command will create one for you (receiving a tip automatically creates an account too)"),
+	"INFO"     : ("Displays your tip bot account address along with a QR code" +
+				 "\n- Send BANANO to this address to increase your tip bot balance" +
+				 "\n- If you do not have a tip bot account yet, this command will create one for you (receiving a tip automatically creates an account too)"),
 }
 
 WITHDRAW = {
 	"CMD"      : "%swithdraw, takes: address (optional amount)" % COMMAND_PREFIX,
 	"OVERVIEW" : "Allows you to withdraw from your tip account",
     "INFO"     : ("Withdraws specified amount to specified address, " +
-				"if amount isn't specified your entire tip account balance will be withdrawn" +
-				"\nExample: `withdraw ban_111111111111111111111111111111111111111111111111111hifc8npp 1000` - Withdraws 1000 BANANO"),
+				 "if amount isn't specified your entire tip account balance will be withdrawn" +
+				 "\nExample: `withdraw ban_111111111111111111111111111111111111111111111111111hifc8npp 1000` - Withdraws 1000 BANANO"),
 }
 
 TIP = {
 	"CMD"      : "%sban, takes: amount <*users>" % COMMAND_PREFIX,
 	"OVERVIEW" : "Send a tip to mentioned users",
 	"INFO"     : ("Tip specified amount to mentioned user(s) (minimum tip is 1 BANANO)" +
-				"\nThe recipient(s) will be notified of your tip via private message" +
-				"\nSuccessful tips will be deducted from your available balance immediately" +
-				"\nExample: `ban 2 @user1 @user2` would send 2 to user1 and 2 to user2"),
+				  "\nThe recipient(s) will be notified of your tip via private message" +
+				  "\nSuccessful tips will be deducted from your available balance immediately" +
+				  "\nExample: `ban 2 @user1 @user2` would send 2 to user1 and 2 to user2"),
 }
 
 TIPSPLIT = {
@@ -112,18 +112,18 @@ TIPRANDOM = {
 	"CMD"      : "%sbanrandom, takes: amount" % COMMAND_PREFIX,
 	"OVERVIEW" : "Tips a random active user",
 	"INFO"     : ("Tips amount to a random active user. Active user list picked using same logic as rain" +
-				"\n**Minimum banrandom amount: %d BANANO**") % settings.tiprandom_minimum ,
+				  "\n**Minimum banrandom amount: %d BANANO**") % settings.tiprandom_minimum ,
 }
 
 RAIN = {
 	"CMD"      : "%srain, takes: amount" % COMMAND_PREFIX,
 	"OVERVIEW" : "Split tip among all active* users",
 	"INFO"     : ("Distribute <amount> evenly to users who are eligible.\n" +
-				"Eligibility is determined based on your *recent* activity **and** contributions to public channels. " +
-				"Several factors are considered in picking who receives rain. If you aren't receiving it, you aren't contributing enough or your contributions are low-quality/spammy.\n"
-				"Note: Users who have a status of 'offline' or 'do not disturb' do not receive rain.\n" +
-				"Example: `rain 1000` - distributes 1000 evenly to eligible users (similar to `bansplit`)" +
-				"\n**Minimum rain amount: %d BANANO**") % (RAIN_MINIMUM),
+				  "Eligibility is determined based on your *recent* activity **and** contributions to public channels. " +
+				  "Several factors are considered in picking who receives rain. If you aren't receiving it, you aren't contributing enough or your contributions are low-quality/spammy.\n"
+				  "Note: Users who have a status of 'offline' or 'do not disturb' do not receive rain.\n" +
+				  "Example: `rain 1000` - distributes 1000 evenly to eligible users (similar to `bansplit`)" +
+				  "\n**Minimum rain amount: %d BANANO**") % (RAIN_MINIMUM),
 }
 
 START_GIVEAWAY = {
@@ -201,9 +201,9 @@ DEL_FAVORITE = {
 	"CMD" 	 : "%sremovefavorite, takes: *users or favorite ID" % COMMAND_PREFIX,
 	"OVERVIEW" : "Removes users from your favorites list",
 	"INFO" 	 : ("Removes users from your favorites list. " +
-				"You can either @mention the user in a public channel or use the ID in your `favorites` list" +
-				"\nExample 1: `removefavorite @user1 @user2` - Removes user1 and user2 from your favorites" +
-				"\nExample 2: `removefavorite 1 6 3` - Removes favorites with ID : 1, 6, and 3"),
+			"You can either @mention the user in a public channel or use the ID in your `favorites` list" +
+			"\nExample 1: `removefavorite @user1 @user2` - Removes user1 and user2 from your favorites" +
+			"\nExample 2: `removefavorite 1 6 3` - Removes favorites with ID : 1, 6, and 3"),
 }
 FAVORITES = {
 	"CMD" 	 : "%sfavorites" % COMMAND_PREFIX,
