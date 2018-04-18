@@ -368,7 +368,7 @@ def finish_giveaway():
 	for c in contestants:
 		contestant_ids.append(c.user_id)
 	random.shuffle(contestant_ids)
-	offset = secrers.randbelow(len(contestant_ids))
+	offset = secrets.randbelow(len(contestant_ids))
 	winner = get_user_by_id(contestant_ids[offset])
 	Contestant.delete().execute()
 	giveaway = Giveaway.get(active=True)
