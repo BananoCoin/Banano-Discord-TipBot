@@ -81,14 +81,14 @@ DEPOSIT ={
 	"CMD"      : "%sdeposit or %sregister" % (COMMAND_PREFIX, COMMAND_PREFIX),
 	"OVERVIEW" : "Shows your account address",
 	"INFO"     : ("Displays your tip bot account address along with a QR code" +
-				"\n- Send BANANO to this address to increase your tip bot balance" +
-				"\n- If you do not have a tip bot account yet, this command will create one for you (receiving a tip automatically creates an account too)"),
+                "\n- Send BANANO to this address to increase your tip bot balance" +
+                "\n- If you do not have a tip bot account yet, this command will create one for you (receiving a tip automatically creates an account too)"),
 }
 
 WITHDRAW = {
 	"CMD"      : "%swithdraw, takes: address (optional amount)" % COMMAND_PREFIX,
 	"OVERVIEW" : "Allows you to withdraw from your tip account",
-    "INFO"     : ("Withdraws specified amount to specified address, " +
+	"INFO"     : ("Withdraws specified amount to specified address, " +
 				"if amount isn't specified your entire tip account balance will be withdrawn" +
 				"\nExample: `withdraw ban_111111111111111111111111111111111111111111111111111hifc8npp 1000` - Withdraws 1000 BANANO"),
 }
