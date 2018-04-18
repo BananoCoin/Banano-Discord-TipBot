@@ -1429,13 +1429,25 @@ async def statsunban(ctx):
 			else:
 				await post_dm(message.author, STATSUNBAN_DUP, member.name)
 
-@client.command()
-async def settiptotal(ctx, amount: float = -1.0, user: discord.Member = None):
-	if is_admin(ctx.message.author):
-		if user is None or amount < 0:
-			await post_dm(ctx.message.author, "Usage: settiptotal amount user")
-			return
-		db.update_tip_total(user.id, amount)
+@client.command(aliases=['addtips', 'incrementtips'])
+async def increasetips(ctx, amount: float = -1.0, user: discord.Member = None):
+	if not is_admin(ctx.message.author):
+		return
+	u = db.get_user_by_id(user.id)
+	if u is None or 0 > amount:
+		await post_dm(ctx.message.author, "Usage: increasetips amount user")
+		return
+	db.update_tip_total(user.id, amount + u.tipped_amount)
+
+@client.command(aliases=['decrementtips', 'decreasetips', 'removetips'])
+async def reducetips(ctx, amount: float = -1.0, user: discord.Member = None):
+	if not is_admin(ctx.message.author):
+		return
+	u = db.get_user_by_id(user.id)
+	if u is None or amount < 0:
+		await post_dm(ctx.message.author, "Usage: reducetips amount user")
+		return
+	db.update_tip_total(user.id, u.tipped_amount - amount)
 
 @client.command()
 async def settipcount(ctx, cnt: int = -1, user: discord.Member = None):
