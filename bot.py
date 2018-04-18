@@ -112,7 +112,7 @@ TIPRANDOM = {
 	"CMD"      : "%sbanrandom, takes: amount" % COMMAND_PREFIX,
 	"OVERVIEW" : "Tips a random active user",
 	"INFO"     : ("Tips amount to a random active user. Active user list picked using same logic as rain" +
-				  "\n**Minimum banrandom amount: %d BANANO**") % settings.tiprandom_minimum ,
+				"\n**Minimum banrandom amount: %d BANANO**") % settings.tiprandom_minimum ,
 }
 
 RAIN = {
@@ -120,22 +120,22 @@ RAIN = {
 	"OVERVIEW" : "Split tip among all active* users",
 	"INFO"     : ("Distribute <amount> evenly to users who are eligible.\n" +
 				"Eligibility is determined based on your *recent* activity **and** contributions to public channels. " +
-				"Several factors are considered in picking who receives rain. If you aren't receiving it, you aren't contributing enough or your contributions are low-quality/spammy.\n"
+				"Several factors are considered in picking who receives rain. If you aren't receiving it, you aren't contributing enough or your contributions are low-quality/spammy.\n" +
 				"Note: Users who have a status of 'offline' or 'do not disturb' do not receive rain.\n" +
 				"Example: `rain 1000` - distributes 1000 evenly to eligible users (similar to `bansplit`)" +
 				"\n**Minimum rain amount: %d BANANO**") % (RAIN_MINIMUM),
 }
 
 START_GIVEAWAY = {
-	"CMD" 	 : "%sgiveaway, takes: amount, fee=(amount), duration=(minutes)" % (COMMAND_PREFIX),
+	"CMD" 	   : "%sgiveaway, takes: amount, fee=(amount), duration=(minutes)" % (COMMAND_PREFIX),
 	"OVERVIEW" : "Sponsor a giveaway",
-	"INFO" 	 : ("Start a giveaway with given amount, entry fee, and duration." +
-			"\nEntry fees are added to the total prize pool" +
-			"\nGiveaway will end and choose random winner after (duration)" +
-			"\nExample: `giveaway 1000 fee=5 duration=30` - Starts a giveaway of 1000, with fee of 5, duration of 30 minutes" +
-			"\n**Minimum required to sponsor a giveaway: %d BANANO**" +
-			"\n**Minimum giveaway duration: %d minutes**" +
-			"\n**Maximum giveaway duration: %d minutes**") % (GIVEAWAY_MINIMUM, GIVEAWAY_MIN_DURATION, GIVEAWAY_MAX_DURATION),
+	"INFO" 	   : ("Start a giveaway with given amount, entry fee, and duration." +
+				"\nEntry fees are added to the total prize pool" +
+				"\nGiveaway will end and choose random winner after (duration)" +
+				"\nExample: `giveaway 1000 fee=5 duration=30` - Starts a giveaway of 1000, with fee of 5, duration of 30 minutes" +
+				"\n**Minimum required to sponsor a giveaway: %d BANANO**" +
+				"\n**Minimum giveaway duration: %d minutes**" +
+				"\n**Maximum giveaway duration: %d minutes**") % (GIVEAWAY_MINIMUM, GIVEAWAY_MIN_DURATION, GIVEAWAY_MAX_DURATION),
 }
 
 ENTER = {
