@@ -64,111 +64,193 @@ last_winners=spam_delta
 ### Response Templates ###
 COMMAND_NOT_FOUND="I don't understand what you're saying, try %shelp" % COMMAND_PREFIX
 AUTHOR_HEADER="BananoBot++ v%s (BANANO Tip Bot)" % BOT_VERSION
-BALANCE_CMD="%sbalance" % COMMAND_PREFIX
-BALANCE_OVERVIEW="Display balance of your account"
-BALANCE_INFO=("Displays the balance of your tip account (in BANANO) as described:" +
-		"\nActual Balance: The actual balance in your tip account" +
-		"\nAvailable Balance: The balance you are able to tip with (Actual - Pending Send)" +
-		"\nPending Send: Tips you have sent, but have not yet been broadcasted to network" +
-		"\nPending Receipt: Tips that have been sent to you, but have not yet been pocketed by the node. " +
-		"\nPending funds will be available for tip/withdraw after they have been pocketed by the node")
-DEPOSIT_CMD="%sdeposit or %sregister" % (COMMAND_PREFIX, COMMAND_PREFIX)
-DEPOSIT_OVERVIEW="Shows your account address"
-DEPOSIT_INFO=("Displays your tip bot account address along with a QR code" +
-		"\n- Send BANANO to this address to increase your tip bot balance" +
-		"\n- If you do not have a tip bot account yet, this command will create one for you (receiving a tip automatically creates an account too)")
-WITHDRAW_CMD="%swithdraw, takes: address (optional amount)" % COMMAND_PREFIX
-WITHDRAW_OVERVIEW="Allows you to withdraw from your tip account"
-WITHDRAW_INFO=("Withdraws specified amount to specified address, " +
-		"if amount isn't specified your entire tip account balance will be withdrawn" +
-		"\nExample: `withdraw ban_111111111111111111111111111111111111111111111111111hifc8npp 1000` - Withdraws 1000 BANANO")
-TIP_CMD="%sban, takes: amount <*users>" % COMMAND_PREFIX
-TIP_OVERVIEW="Send a tip to mentioned users"
-TIP_INFO=("Tip specified amount to mentioned user(s) (minimum tip is 1 BANANO)" +
-		"\nThe recipient(s) will be notified of your tip via private message" +
-		"\nSuccessful tips will be deducted from your available balance immediately" +
-		"\nExample: `ban 2 @user1 @user2` would send 2 to user1 and 2 to user2")
-TIPSPLIT_CMD="%sbansplit, takes: amount, <*users>" % COMMAND_PREFIX
-TIPSPLIT_OVERVIEW="Split a tip among mentioned uses"
-TIPSPLIT_INFO="Distributes a tip evenly to all mentioned users.\nExample: `bansplit 2 @user1 @user2` would send 1 to user1 and 1 to user2"
-TIPRANDOM_CMD="%sbanrandom, takes: amount" % COMMAND_PREFIX
-TIPRANDOM_OVERVIEW="Tips a random active user"
-TIPRANDOM_INFO=("Tips amount to a random active user. Active user list picked using same logic as rain" +
-		"\n**Minimum banrandom amount: %d BANANO**") % settings.tiprandom_minimum
-RAIN_CMD="%srain, takes: amount" % COMMAND_PREFIX
-RAIN_OVERVIEW="Split tip among all active* users"
-RAIN_INFO=("Distribute <amount> evenly to users who are eligible.\n" +
-		"Eligibility is determined based on your *recent* activity **and** contributions to public channels. " +
-		"Several factors are considered in picking who receives rain. If you aren't receiving it, you aren't contributing enough or your contributions are low-quality/spammy.\n"
-		"Note: Users who have a status of 'offline' or 'do not disturb' do not receive rain.\n" +
-		"Example: `rain 1000` - distributes 1000 evenly to eligible users (similar to `bansplit`)" +
-		"\n**Minimum rain amount: %d BANANO**") % (RAIN_MINIMUM)
-START_GIVEAWAY_CMD="%sgiveaway, takes: amount, fee=(amount), duration=(minutes)" % (COMMAND_PREFIX)
-START_GIVEAWAY_OVERVIEW="Sponsor a giveaway"
-START_GIVEAWAY_INFO=("Start a giveaway with given amount, entry fee, and duration." +
-		"\nEntry fees are added to the total prize pool" +
-		"\nGiveaway will end and choose random winner after (duration)" +
-		"\nExample: `giveaway 1000 fee=5 duration=30` - Starts a giveaway of 1000, with fee of 5, duration of 30 minutes" +
-		"\n**Minimum required to sponsor a giveaway: %d BANANO**" +
-		"\n**Minimum giveaway duration: %d minutes**" +
-		"\n**Maximum giveaway duration: %d minutes**") % (GIVEAWAY_MINIMUM, GIVEAWAY_MIN_DURATION, GIVEAWAY_MAX_DURATION)
-ENTER_CMD="%sticket, takes: fee (conditional)" % COMMAND_PREFIX
-ENTER_OVERVIEW="Enter the current giveaway"
-ENTER_INFO=("Enter the current giveaway, if there is one. Takes (fee) as argument only if there's an entry fee." +
-		"\n Fee will go towards the prize pool and be deducted from your available balance immediately" +
-		"\nExample: `ticket` (to enter a giveaway without a fee), `ticket 10` (to enter a giveaway with a fee of 10)")
-TIPGIVEAWAY_CMD="%sdonate, takes: amount" % (COMMAND_PREFIX)
-TIPGIVEAWAY_OVERVIEW="Add to present or future giveaway prize pool"
-TIPGIVEAWAY_INFO=("Add <amount> to the current giveaway pool\n"+
-		"If there is no giveaway, one will be started when minimum is reached." +
-		"\nTips >= %d BANANO automatically enter you for giveaways sponsored by the community." +
-		"\nDonations count towards the next giveaways entry fee" +
-		"\nExample: `donate 1000` - Adds 1000 to giveaway pool") % (TIPGIVEAWAY_AUTO_ENTRY)
-TICKETSTATUS_CMD="%sticketstatus" % COMMAND_PREFIX
-TICKETSTATUS_OVERVIEW="Check if you are entered into the current giveaway"
-TICKETSTATUS_INFO=TICKETSTATUS_OVERVIEW
-GIVEAWAY_STATS_CMD="%sgiveawaystats or %sgoldenticket" % (COMMAND_PREFIX, COMMAND_PREFIX)
-GIVEAWAY_STATS_OVERVIEW="Display statistics relevant to the current giveaway"
-GIVEAWAY_STATS_INFO=GIVEAWAY_STATS_OVERVIEW
-WINNERS_CMD="%swinners" % COMMAND_PREFIX
-WINNERS_INFO="Display previous giveaway winners"
-WINNERS_OVERVIEW=WINNERS_INFO
-LEADERBOARD_CMD="%sleaderboard or %sballers" % (COMMAND_PREFIX, COMMAND_PREFIX)
-LEADERBOARD_INFO="Display the all-time tip leaderboard"
-LEADERBOARD_OVERVIEW=LEADERBOARD_INFO
-TOPTIPS_CMD="%stoptips" % COMMAND_PREFIX
-TOPTIPS_OVERVIEW="Display largest individual tips"
-TOPTIPS_INFO="Display the single largest tips for the past 24 hours, current month, and all time"
-STATS_CMD="%stipstats" % COMMAND_PREFIX
-STATS_OVERVIEW="Display your personal tipping stats"
-STATS_INFO="Display your personal tipping stats (rank, total tipped, and average tip)"
-ADD_FAVORITE_CMD="%saddfavorite, takes: *users" % COMMAND_PREFIX
-ADD_FAVORITE_OVERVIEW="Add users to your favorites list"
-ADD_FAVORITE_INFO="Adds mentioned users to your favorites list.\nExample: `addfavorite @user1 @user2 @user3` - Adds user1,user2,user3 to your favorites"
-DEL_FAVORITE_CMD="%sremovefavorite, takes: *users or favorite ID" % COMMAND_PREFIX
-DEL_FAVORITE_OVERVIEW="Removes users from your favorites list"
-DEL_FAVORITE_INFO=("Removes users from your favorites list. " +
-		"You can either @mention the user in a public channel or use the ID in your `favorites` list" +
-		"\nExample 1: `removefavorite @user1 @user2` - Removes user1 and user2 from your favorites" +
-		"\nExample 2: `removefavorite 1 6 3` - Removes favorites with ID=1, 6, and 3")
-FAVORITES_CMD="%sfavorites" % COMMAND_PREFIX
-FAVORITES_OVERVIEW="View your favorites list"
-FAVORITES_INFO="View your favorites list. Use `addfavorite` to add favorites to your list and `removefavorite` to remove favories"
-TIP_FAVORITES_CMD="%sbanfavorites, takes: amount" % COMMAND_PREFIX
-TIP_FAVORITES_OVERVIEW="Tip your entire favorites list"
-TIP_FAVORITES_INFO=("Tip everybody in your favorites list specified amount" +
-		"\nExample: `banfavorites 1000` Distributes 1000 to your entire favorites list (similar to tipsplit)")
-TIP_AUTHOR_CMD="%sbanauthor, takes: amount" % COMMAND_PREFIX
-TIP_AUTHOR_OVERVIEW="Donate to the author of this bot :yellow_heart:"
-MUTE_CMD="%smute, takes: user id" % COMMAND_PREFIX
-MUTE_OVERVIEW="Block tip notifications when sent by this user"
-MUTE_INFO=MUTE_OVERVIEW
-UNMUTE_CMD="%sunmute, takes: user id" % COMMAND_PREFIX
-UNMUTE_OVERVIEW="Unblock tip notificaitons sent by this user"
-UNMUTE_INFO=UNMUTE_OVERVIEW
-MUTED_CMD="%smuted" % COMMAND_PREFIX
-MUTED_OVERVIEW="View list of users you have muted"
-MUTED_INFO=MUTED_OVERVIEW
+
+# Commands (CMD,Overview, Info)
+BALANCE = {
+	"CMD"      : "%sbalance" % COMMAND_PREFIX,
+    "OVERVIEW" : "Display balance of your account",
+    "INFO"     : ("Displays the balance of your tip account (in BANANO) as described:" +
+			    "\nActual Balance: The actual balance in your tip account" +
+				"\nAvailable Balance: The balance you are able to tip with (Actual - Pending Send)" +
+				"\nPending Send: Tips you have sent, but have not yet been broadcasted to network" +
+				"\nPending Receipt: Tips that have been sent to you, but have not yet been pocketed by the node. " +
+				"\nPending funds will be available for tip/withdraw after they have been pocketed by the node"),
+}
+
+DEPOSIT ={
+	"CMD"      : "%sdeposit or %sregister" % (COMMAND_PREFIX, COMMAND_PREFIX),
+	"OVERVIEW" : "Shows your account address",
+    "INFO"     :("Displays your tip bot account address along with a QR code" +
+			   "\n- Send BANANO to this address to increase your tip bot balance" +
+			   "\n- If you do not have a tip bot account yet, this command will create one for you (receiving a tip automatically creates an account too)"),
+}
+
+WITHDRAW = {
+	"CMD"      : "%swithdraw, takes: address (optional amount)" % COMMAND_PREFIX,
+	"OVERVIEW" : "Allows you to withdraw from your tip account",
+    "INFO"     : ("Withdraws specified amount to specified address, " +
+				"if amount isn't specified your entire tip account balance will be withdrawn" +
+				"\nExample: `withdraw ban_111111111111111111111111111111111111111111111111111hifc8npp 1000` - Withdraws 1000 BANANO"),
+}
+
+TIP = {
+	"CMD"      : "%sban, takes: amount <*users>" % COMMAND_PREFIX,
+	"OVERVIEW" : "Send a tip to mentioned users",
+	"INFO"     : ("Tip specified amount to mentioned user(s) (minimum tip is 1 BANANO)" +
+				"\nThe recipient(s) will be notified of your tip via private message" +
+				"\nSuccessful tips will be deducted from your available balance immediately" +
+				"\nExample: `ban 2 @user1 @user2` would send 2 to user1 and 2 to user2"),
+}
+
+TIPSPLIT = {
+	"CMD"      : "%sbansplit, takes: amount, <*users>" % COMMAND_PREFIX,
+	"OVERVIEW" : "Split a tip among mentioned uses",
+	"INFO"     : "Distributes a tip evenly to all mentioned users.\nExample: `bansplit 2 @user1 @user2` would send 1 to user1 and 1 to user2",
+}
+
+TIPRANDOM = {
+	"CMD"      : "%sbanrandom, takes: amount" % COMMAND_PREFIX,
+	"OVERVIEW" : "Tips a random active user",
+	"INFO"     : ("Tips amount to a random active user. Active user list picked using same logic as rain" +
+				"\n**Minimum banrandom amount: %d BANANO**") % settings.tiprandom_minimum ,
+}
+
+RAIN = {
+	"CMD"      : "%srain, takes: amount" % COMMAND_PREFIX,
+	"OVERVIEW" : "Split tip among all active* users",
+    "INFO"     : ("Distribute <amount> evenly to users who are eligible.\n" +
+				"Eligibility is determined based on your *recent* activity **and** contributions to public channels. " +
+				"Several factors are considered in picking who receives rain. If you aren't receiving it, you aren't contributing enough or your contributions are low-quality/spammy.\n"
+				"Note: Users who have a status of 'offline' or 'do not disturb' do not receive rain.\n" +
+				"Example: `rain 1000` - distributes 1000 evenly to eligible users (similar to `bansplit`)" +
+				"\n**Minimum rain amount: %d BANANO**") % (RAIN_MINIMUM),
+}
+
+START_GIVEAWAY = {
+	"CMD" 	 : "%sgiveaway, takes: amount, fee=(amount), duration=(minutes)" % (COMMAND_PREFIX),
+	"OVERVIEW" : "Sponsor a giveaway",
+	"INFO" 	 : ("Start a giveaway with given amount, entry fee, and duration." +
+				"\nEntry fees are added to the total prize pool" +
+				"\nGiveaway will end and choose random winner after (duration)" +
+				"\nExample: `giveaway 1000 fee=5 duration=30` - Starts a giveaway of 1000, with fee of 5, duration of 30 minutes" +
+				"\n**Minimum required to sponsor a giveaway: %d BANANO**" +
+				"\n**Minimum giveaway duration: %d minutes**" +
+				"\n**Maximum giveaway duration: %d minutes**") % (GIVEAWAY_MINIMUM, GIVEAWAY_MIN_DURATION, GIVEAWAY_MAX_DURATION),
+}
+
+ENTER = {
+	"CMD" 	 : "%sticket, takes: fee (conditional)" % COMMAND_PREFIX,
+	"OVERVIEW" : "Enter the current giveaway",
+	"INFO" 	 : ("Enter the current giveaway, if there is one. Takes (fee) as argument only if there's an entry fee." +
+				"\n Fee will go towards the prize pool and be deducted from your available balance immediately" +
+				"\nExample: `ticket` (to enter a giveaway without a fee), `ticket 10` (to enter a giveaway with a fee of 10)"),
+}
+
+TIPGIVEAWAY = {
+	"CMD" 	 : "%sdonate, takes: amount" % (COMMAND_PREFIX),
+	"OVERVIEW" : "Add to present or future giveaway prize pool",
+	"INFO" 	 : ("Add <amount> to the current giveaway pool\n"+
+				"If there is no giveaway, one will be started when minimum is reached." +
+				"\nTips >= %d BANANO automatically enter you for giveaways sponsored by the community." +
+				"\nDonations count towards the next giveaways entry fee" +
+				"\nExample: `donate 1000` - Adds 1000 to giveaway pool") % (TIPGIVEAWAY_AUTO_ENTRY),
+}
+
+TICKETSTATUS = {
+	"CMD" 	 : "%sticketstatus" % COMMAND_PREFIX,
+	"OVERVIEW" : "Check if you are entered into the current giveaway",
+	"INFO" 	 : "Check if you are entered into the current giveaway",
+}
+
+GIVEAWAY_STATS= {
+	"CMD" 	 : "%sgiveawaystats or %sgoldenticket" % (COMMAND_PREFIX, COMMAND_PREFIX),
+	"OVERVIEW" : "Display statistics relevant to the current giveaway",
+	"INFO" 	 : "Display statistics relevant to the current giveaway",
+}
+
+WINNERS = {
+	"CMD" 	 : "%swinners" % COMMAND_PREFIX,
+	"INFO"	 : "Display previous giveaway winners",
+	"OVERVIEW" : "Display previous giveaway winners",
+}
+
+LEADERBOARD = {
+	"CMD" 	 : "%sleaderboard or %sballers" % (COMMAND_PREFIX, COMMAND_PREFIX),
+	"INFO"	 : "Display the all-time tip leaderboard",
+	"OVERVIEW" : "Display the all-time tip leaderboard",
+}
+
+TOPTIPS = {
+	"CMD" 	 : "%stoptips" % COMMAND_PREFIX,
+	"OVERVIEW" : "Display largest individual tips",
+	"INFO" 	 : "Display the single largest tips for the past 24 hours, current month, and all time",
+}
+
+STATS = {
+	"CMD" 	 : "%stipstats" % COMMAND_PREFIX,
+	"OVERVIEW" : "Display your personal tipping stats",
+	"INFO" 	 : "Display your personal tipping stats (rank, total tipped, and average tip)",
+}
+ADD_FAVORITE = {
+	"CMD" 	 : "%saddfavorite, takes: *users" % COMMAND_PREFIX,
+	"OVERVIEW" : "Add users to your favorites list",
+	"INFO" 	 : "Adds mentioned users to your favorites list.\nExample: `addfavorite @user1 @user2 @user3` - Adds user1,user2,user3 to your favorites",
+}
+
+DEL_FAVORITE = {
+	"CMD" 	 : "%sremovefavorite, takes: *users or favorite ID" % COMMAND_PREFIX,
+	"OVERVIEW" : "Removes users from your favorites list",
+	"INFO" 	 : ("Removes users from your favorites list. " +
+				"You can either @mention the user in a public channel or use the ID in your `favorites` list" +
+				"\nExample 1: `removefavorite @user1 @user2` - Removes user1 and user2 from your favorites" +
+				"\nExample 2: `removefavorite 1 6 3` - Removes favorites with ID : 1, 6, and 3"),
+}
+FAVORITES = {
+	"CMD" 	 : "%sfavorites" % COMMAND_PREFIX,
+	"OVERVIEW" : "View your favorites list",
+	"INFO" 	 : "View your favorites list. Use `addfavorite` to add favorites to your list and `removefavorite` to remove favories",
+}
+TIP_FAVORITES = {
+	"CMD" 	 : "%sbanfavorites, takes: amount" % COMMAND_PREFIX,
+	"OVERVIEW" : "Tip your entire favorites list",
+	"INFO" 	 : ("Tip everybody in your favorites list specified amount" +
+				"\nExample: `banfavorites 1000` Distributes 1000 to your entire favorites list (similar to tipsplit)"),
+}
+
+TIP_AUTHOR = {
+	"CMD" 	 : "%sbanauthor, takes: amount" % COMMAND_PREFIX,
+	"OVERVIEW" : "Donate to the author of this bot :yellow_heart:",
+	"INFO" 	 : "The author is BBedward but there was no INFO property here so I added this as an easter egg. Cheers, Newguyneal",
+}
+
+MUTE = {
+	"CMD" 	 : "%smute, takes: user id" % COMMAND_PREFIX,
+	"OVERVIEW" : "Block tip notifications when sent by this user",
+	"INFO" 	 : "When someone is spamming you with tips and you can't take it anymore",
+}
+
+UNMUTE = {
+	"CMD" 	 : "%sunmute, takes: user id" % COMMAND_PREFIX,
+	"OVERVIEW" : "Unblock tip notificaitons sent by this user",
+	"INFO" 	 : "When the spam is over and you want to know they still love you",
+}
+
+MUTED = {
+	"CMD" 	 : "%smuted" % COMMAND_PREFIX,
+	"OVERVIEW" : "View list of users you have muted",
+	"INFO" 	 : "Are you really gonna drunk dial?",
+}
+
+COMMANDS = {
+    "ACCOUNT_COMMANDS"      : [BALANCE, DEPOSIT, WITHDRAW],
+    "TIPPING_COMMANDS"      : [TIP, TIPSPLIT, TIPRANDOM, RAIN],
+    "GIVEAWAY_COMMANDS"     : [START_GIVEAWAY, ENTER, TIPGIVEAWAY, TICKETSTATUS],
+    "STATISTICS_COMMANDS"   : [GIVEAWAY_STATS, WINNERS, LEADERBOARD, TOPTIPS,STATS],
+    "FAVORITES_COMMANDS"    : [ADD_FAVORITE, DEL_FAVORITE, FAVORITES, TIP_FAVORITES],
+    "NOTIFICATION_COMMANDS" : [MUTE, UNMUTE, MUTED],
+	"AUTHOR_COMMANDS" 		: [TIP_AUTHOR],
+}
+#Text Templates
 BOT_DESCRIPTION=("BananoBot++ v%s - An open source BANANO tip bot for Discord\n" +
 		"Developed by bbedward - Feel free to send suggestions, ideas, and/or tips\n") % BOT_VERSION
 BALANCE_TEXT=(	"```Actual Balance   : %.2f BANANO\n" +
@@ -380,85 +462,58 @@ def is_admin(user):
 	return has_admin_role(user.roles)
 
 ### Commands
+def build_page(group_name,commands_dictionary):
+	entries = []
+	for cmd in commands_dictionary[group_name]:
+			entries.append(paginator.Entry(cmd["CMD"],cmd["INFO"]))
+	return entries
+
 def build_help(page):
 	if page == 0:
-		entries = []
-		entries.append(paginator.Entry(BALANCE_CMD,BALANCE_OVERVIEW))
-		entries.append(paginator.Entry(DEPOSIT_CMD,DEPOSIT_OVERVIEW))
-		entries.append(paginator.Entry(WITHDRAW_CMD,WITHDRAW_OVERVIEW))
-		entries.append(paginator.Entry(TIP_CMD,TIP_OVERVIEW))
-		entries.append(paginator.Entry(TIPSPLIT_CMD,TIPSPLIT_OVERVIEW))
-		entries.append(paginator.Entry(TIPRANDOM_CMD,TIPRANDOM_OVERVIEW))
-		entries.append(paginator.Entry(RAIN_CMD,RAIN_OVERVIEW))
-		entries.append(paginator.Entry(START_GIVEAWAY_CMD,START_GIVEAWAY_OVERVIEW))
-		entries.append(paginator.Entry(ENTER_CMD,ENTER_OVERVIEW))
-		entries.append(paginator.Entry(TIPGIVEAWAY_CMD,TIPGIVEAWAY_OVERVIEW))
-		entries.append(paginator.Entry(TICKETSTATUS_CMD,TICKETSTATUS_OVERVIEW))
-		entries.append(paginator.Entry(ADD_FAVORITE_CMD,ADD_FAVORITE_OVERVIEW))
-		entries.append(paginator.Entry(DEL_FAVORITE_CMD,DEL_FAVORITE_OVERVIEW))
-		entries.append(paginator.Entry(FAVORITES_CMD,FAVORITES_OVERVIEW))
-		entries.append(paginator.Entry(GIVEAWAY_STATS_CMD,GIVEAWAY_STATS_OVERVIEW))
-		entries.append(paginator.Entry(WINNERS_CMD,WINNERS_OVERVIEW))
-		entries.append(paginator.Entry(LEADERBOARD_CMD,LEADERBOARD_OVERVIEW))
-		entries.append(paginator.Entry(TOPTIPS_CMD,TOPTIPS_OVERVIEW))
-		entries.append(paginator.Entry(STATS_CMD,STATS_OVERVIEW))
-		entries.append(paginator.Entry(MUTE_CMD, MUTE_OVERVIEW))
-		entries.append(paginator.Entry(UNMUTE_CMD, UNMUTE_OVERVIEW))
-		entries.append(paginator.Entry(MUTED_CMD, MUTED_OVERVIEW))
 		author=AUTHOR_HEADER
 		title="Command Overview"
+		entries = []
+		tmp_command_list = [
+			"ACCOUNT_COMMANDS",
+			"TIPPING_COMMANDS",
+			"GIVEAWAY_COMMANDS",
+			"STATISTICS_COMMANDS",
+			"FAVORITES_COMMANDS",
+			"NOTIFICATION_COMMANDS"
+		]
+		for command_group in tmp_command_list:
+			for cmd in COMMANDS[command_group]:
+				entries.append(paginator.Entry(cmd["CMD"],cmd["OVERVIEW"])
 		return paginator.Page(entries=entries, title=title,author=author)
 	elif page == 1:
-		entries = []
-		entries.append(paginator.Entry(BALANCE_CMD,BALANCE_INFO))
-		entries.append(paginator.Entry(DEPOSIT_CMD,DEPOSIT_INFO))
-		entries.append(paginator.Entry(WITHDRAW_CMD,WITHDRAW_INFO))
 		author="Account Commands"
 		description="Check account balance, withdraw, or deposit"
+		entries = build_page("ACCOUNT_COMMANDS",COMMANDS)
 		return paginator.Page(entries=entries, author=author,description=description)
 	elif page == 2:
-		entries = []
-		entries.append(paginator.Entry(TIP_CMD,TIP_INFO))
-		entries.append(paginator.Entry(TIPSPLIT_CMD,TIPSPLIT_INFO))
-		entries.append(paginator.Entry(TIPRANDOM_CMD,TIPRANDOM_INFO))
-		entries.append(paginator.Entry(RAIN_CMD,RAIN_INFO))
 		author="Tipping Commands"
 		description="The different ways you are able to tip with this bot"
+		entries = build_page("TIPPING_COMMANDS",COMMANDS)
 		return paginator.Page(entries=entries, author=author,description=description)
 	elif page == 3:
-		entries = []
-		entries.append(paginator.Entry(START_GIVEAWAY_CMD,START_GIVEAWAY_INFO))
-		entries.append(paginator.Entry(ENTER_CMD,ENTER_INFO))
-		entries.append(paginator.Entry(TIPGIVEAWAY_CMD,TIPGIVEAWAY_INFO))
-		entries.append(paginator.Entry(TICKETSTATUS_CMD,TICKETSTATUS_INFO))
 		author="Giveaway Commands"
 		description="The different ways to interact with the bot's giveaway functionality"
+		entries = build_page("GIVEAWAY_COMMANDS",COMMANDS)
 		return paginator.Page(entries=entries, author=author, description=description)
 	elif page == 4:
-		entries = []
-		entries.append(paginator.Entry(GIVEAWAY_STATS_CMD,GIVEAWAY_STATS_INFO))
-		entries.append(paginator.Entry(WINNERS_CMD,WINNERS_INFO))
-		entries.append(paginator.Entry(LEADERBOARD_CMD,LEADERBOARD_INFO))
-		entries.append(paginator.Entry(TOPTIPS_CMD,TOPTIPS_INFO))
-		entries.append(paginator.Entry(STATS_CMD,STATS_INFO))
 		author="Statistics Commands"
 		description="Individual, bot-wide, and giveaway stats"
+		entries = build_page("STATISTICS_COMMANDS",COMMANDS)
 		return paginator.Page(entries=entries, author=author,description=description)
 	elif page == 5:
-		entries = []
-		entries.append(paginator.Entry(ADD_FAVORITE_CMD,ADD_FAVORITE_INFO))
-		entries.append(paginator.Entry(DEL_FAVORITE_CMD,DEL_FAVORITE_INFO))
-		entries.append(paginator.Entry(FAVORITES_CMD,FAVORITES_INFO))
 		author="Favorites Commands"
 		description="How to interact with your favorites list"
+		entries = build_page("FAVORITES_COMMANDS",COMMANDS)		
 		return paginator.Page(entries=entries, author=author,description=description)
 	elif page == 6:
-		entries = []
-		entries.append(paginator.Entry(MUTE_CMD, MUTE_INFO))
-		entries.append(paginator.Entry(UNMUTE_CMD, UNMUTE_INFO))
-		entries.append(paginator.Entry(MUTED_CMD, MUTED_INFO))
 		author="Notification Settings"
 		description="Handle how tip bot gives you notifications"
+		entries = build_page("NOTIFICATION_COMMANDS",COMMANDS)
 		return paginator.Page(entries=entries, author=author, description=description)
 	elif page == 7:
 		entries = []
