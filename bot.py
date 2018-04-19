@@ -1497,11 +1497,12 @@ async def citizenship(ctx):
 @client.command()
 async def deport(ctx):
 	message = ctx.message
-	if len(message.mentions) > 0:
-		citizenship = discord.utils.get(message.guild.roles,name='Citizens')
-		for member in message.mentions:
-			await member.remove_roles(citizenship)
-			await post_response(message, DEPORT, mention_id=member.id)
+	if is_admin(message.author):
+		if len(message.mentions) > 0:
+			citizenship = discord.utils.get(message.guild.roles,name='Citizens')
+			for member in message.mentions:
+				await member.remove_roles(citizenship)
+				await post_response(message, DEPORT, mention_id=member.id)
 			await message.add_reaction('\U0001F6F3')
 
 @client.command()
