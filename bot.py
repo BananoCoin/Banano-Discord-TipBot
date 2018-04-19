@@ -301,8 +301,8 @@ RIGHTS="```You have been arrested by the BRPD for crimes against the Banano Repu
 RELEASE="```You have been released from Jail!```"
 CITIZENSHIP="```I hereby declare you a Citizen of the Banano Republic, may the Banano gods grant you all things which your heart desires.```"
 DEPORT="```I hereby withdraw your Citizenship to the Banano Republic, we don’t want to talk to you no more, you empty-headed animal-food-trough wiper. We fart in your general direction. Your mother was a hamster, and your father smelt of elderberries.```"
-TROLL="```You have been marked as a TROLL in the Banano Republic```"
-UNTROLL="```You are no longer known as a TROLL in the Banano Republic```"
+TROLL="```You have been marked as a TROLL and are no longer a Citizen in the Banano Republic```"
+UNTROLL="```You are no longer known as a TROLL in the Banano Republic, please reapply for Citizenship.```"
 ### END Response Templates ###
 
 # Paused flag, indicates whether or not bot is paused
@@ -1513,8 +1513,10 @@ async def troll(ctx):
 	if is_admin(message.author):
 		if len(message.mentions) > 0:
 			troll = discord.utils.get(message.guild.roles,name='Troll')
+			citizenship = discord.utils.get(message.guild.roles,name='Citizens')
 			for member in message.mentions:
 				await member.add_roles(troll)
+				await member.remove_roles(citizenship)
 				await post_response(message, TROLL, mention_id=member.id)
 
 @client.command()
