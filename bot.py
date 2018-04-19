@@ -500,7 +500,7 @@ def build_help(page):
 	elif page == 5:
 		author="Favorites Commands"
 		description="How to interact with your favorites list"
-		entries = build_page("FAVORITES_COMMANDS",COMMANDS)		
+		entries = build_page("FAVORITES_COMMANDS",COMMANDS)
 		return paginator.Page(entries=entries, author=author,description=description)
 	elif page == 6:
 		author="Notification Settings"
@@ -1503,6 +1503,25 @@ async def deport(ctx):
 			await member.remove_roles(citizenship)
 			await post_response(message, DEPORT, mention_id=member.id)
 			await message.add_reaction('\U0001F6F3')
+
+@client.command()
+async def troll(ctx):
+	message = ctx.message
+	if is_admin(message.author):
+		if len(message.mentions) > 0:
+			troll = discord.utils.get(message.guild.roles,name='troll')
+			for member in message.mentions:
+				await member.add_roles(troll)
+
+@client.command()
+async def untroll(ctx):
+	message = ctx.message
+	if is_admin(message.author):
+		if len(message.mentions) > 0:
+			troll = discord.utils.get(message.guild.roles,name='troll')
+			for member in message.mentions:
+				await member.remove_roles(troll)
+
 
 ### Utility Functions
 def get_qr_url(text):
