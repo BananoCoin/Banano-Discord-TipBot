@@ -78,7 +78,7 @@ def get_aliases(dict, exclude=''):
 ### All commands
 
 BALANCE = {
-		"TRIGGER"  : ["balance", "bal", "$", "b"],
+		"TRIGGER"  : ["balance", "bal", "$"],
 		"CMD"      : "{0}balance".format(COMMAND_PREFIX),
 		"OVERVIEW" : "Display balance of your account",
 		"INFO"     : ("Displays the balance of your tip account (in BANANO) as described:" +
