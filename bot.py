@@ -666,7 +666,7 @@ def build_help():
 	entries = build_page("NOTIFICATION_COMMANDS",COMMANDS)
 	pages.append(paginator.Page(entries=entries, author=author, description=description))
 	# Info
-	entries = [paginator.Entry(TIP_AUTHOR['CMD'], TIP_AUTHOR['OVERVIEW'])]
+	entries = []
 	author=AUTHOR_HEADER + " - by bbedward"
 	description=("**Reviews**:\n" + "'10/10 True Masterpiece' - BANANO Core Team" +
 			"\n'0/10 Didn't get rain' - Almost everybody else\n\n" +
