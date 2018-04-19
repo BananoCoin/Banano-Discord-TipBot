@@ -1510,7 +1510,7 @@ async def troll(ctx):
 	message = ctx.message
 	if is_admin(message.author):
 		if len(message.mentions) > 0:
-			troll = discord.utils.get(message.guild.roles,name='troll')
+			troll = discord.utils.get(message.guild.roles,name='Troll')
 			for member in message.mentions:
 				await member.add_roles(troll)
 
@@ -1519,7 +1519,7 @@ async def untroll(ctx):
 	message = ctx.message
 	if is_admin(message.author):
 		if len(message.mentions) > 0:
-			troll = discord.utils.get(message.guild.roles,name='troll')
+			troll = discord.utils.get(message.guild.roles,name='Troll')
 			for member in message.mentions:
 				await member.remove_roles(troll)
 
