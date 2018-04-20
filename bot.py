@@ -721,7 +721,7 @@ async def balance(ctx):
 		send = balances['pending_send']
 		receive = balances['pending']
 		await post_response(message, BALANCE_TEXT,	'{0:,.2f}'.format(actual),
-								'{0:,.2f}'.formatt(available),
+								'{0:,.2f}'.format(available),
 								'{0:,.2f}'.format(send),
 								'{0:,.2f}'.format(receive))
 
