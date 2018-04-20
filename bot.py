@@ -716,10 +716,10 @@ async def balance(ctx):
 		if user is None:
 			return
 		balances = await wallet.get_balance(user)
-		actual = balances['actual']
-		available = balances['available']
-		send = balances['pending_send']
-		receive = balances['pending']
+		actual = float(balances['actual'])
+		available = float(balances['available'])
+		send = float(balances['pending_send'])
+		receive = float(balances['pending'])
 		await post_response(message, BALANCE_TEXT,	'{0:,.2f}'.format(actual),
 								'{0:,.2f}'.format(available),
 								'{0:,.2f}'.format(send),
