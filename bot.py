@@ -605,7 +605,11 @@ async def pause_msg(message):
 def is_admin(user):
 	if str(user.id) in settings.admin_ids:
 		return True
-	return has_admin_role(user.roles)
+	for m in client.get_all_members():
+		if m.id == user.id:
+			if has_admin_role(m.roles):
+				return True
+	return False
 
 ### Commands
 def build_page(group_name,commands_dictionary):
