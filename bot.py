@@ -353,10 +353,10 @@ COMMANDS = {
 ### Response Templates###
 
 # balance
-BALANCE_TEXT=(	"```Actual Balance   : {0:.2f} BANANO\n" +
-		"Available Balance: {1:.2f} BANANO\n" +
-		"Pending Send     : {2:.2f} BANANO\n" +
-		"Pending Receipt  : {3:.2f} BANANO```")
+BALANCE_TEXT=(	"```Actual Balance   : {0:,.2f} BANANO\n" +
+		"Available Balance: {1:,.2f} BANANO\n" +
+		"Pending Send     : {2:,.2f} BANANO\n" +
+		"Pending Receipt  : {3:,.2f} BANANO```")
 
 # deposit (split into 3 for easy copypasting address on mobile)
 DEPOSIT_TEXT="Your wallet address is:"
@@ -716,14 +716,11 @@ async def balance(ctx):
 		if user is None:
 			return
 		balances = await wallet.get_balance(user)
-		actual = float(balances['actual'])
-		available = float(balances['available'])
-		send = float(balances['pending_send'])
-		receive = float(balances['pending'])
-		await post_response(message, BALANCE_TEXT,	'{0:,.2f}'.format(actual),
-								'{0:,.2f}'.format(available),
-								'{0:,.2f}'.format(send),
-								'{0:,.2f}'.format(receive))
+		actual = balances['actual']
+		available = balances['available']
+		send = balances['pending_send']
+		receive = balances['pending']
+		await post_response(message, BALANCE_TEXT, actual, available, send, receive)
 
 @client.command(aliases=get_aliases(DEPOSIT, exclude='deposit'))
 async def deposit(ctx):
