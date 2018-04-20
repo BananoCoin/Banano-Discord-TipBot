@@ -1556,7 +1556,9 @@ async def unpause(ctx):
 
 @client.command()
 async def tipban(ctx):
-	message = ctx.message
+	await do_tipban(ctx.message)
+
+async def do_tipban(message):
 	if is_admin(message.author):
 		for member in message.mentions:
 			if member.id not in settings.admin_ids and not has_admin_role(member.roles):
@@ -1577,7 +1579,9 @@ async def statsban(ctx):
 
 @client.command()
 async def tipunban(ctx):
-	message = ctx.message
+	await do_tipunban(ctx.message)
+
+async def do_tipunban(message):
 	if is_admin(message.author):
 		for member in message.mentions:
 			if db.unban_user(member.id):
