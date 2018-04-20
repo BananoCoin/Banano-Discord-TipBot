@@ -1680,13 +1680,6 @@ async def settoptip(ctx):
 	if month == -1 and alltime == -1 and day == -1:
 		await post_usage(ctx.message, SETTOPTIP)
 		return
-	else:
-		if month != -1:
-			month =  int(month * 1000000)
-		if alltime != -1:
-			alltime = int(alltime * 1000000)
-		if day != -1:
-			day = int(day * 1000000)
 	for m in ctx.message.mentions:
 		u = db.get_user_by_id(m.id)
 		if u is None:
