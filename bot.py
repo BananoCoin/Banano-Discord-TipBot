@@ -1188,7 +1188,10 @@ async def tip_giveaway(message, ticket=False):
 			entered = db.add_contestant(message.author.id, override_ban=True)
 			if entered:
 				if giveaway is None:
-					await post_response(message, TIPGIVEAWAY_ENTERED_FUTURE)
+					if message.channel.id not in settings.no_spam_channels:
+						await post_response(message, TIPGIVEAWAY_ENTERED_FUTURE)
+					else:
+						await post_dm(message.author, TIPGIVEAWAY_ENTERED_FUTURE)
 				else:
 					await post_dm(message.author, ENTER_ADDED)
 			elif ticket:
@@ -1223,6 +1226,8 @@ async def ticketstatus(ctx):
 @client.command(aliases=get_aliases(GIVEAWAY_STATS, exclude='giveawaystats'))
 async def giveawaystats(ctx):
 	message = ctx.message
+	if message.channel.id in settings.no_spam_channels:
+		return
 	stats = db.get_giveaway_stats()
 	if stats is None:
 		for_next = GIVEAWAY_MINIMUM - db.get_tipgiveaway_sum()
@@ -1260,6 +1265,8 @@ async def finish_giveaway(delay):
 @client.command()
 async def winners(ctx):
 	message = ctx.message
+	if message.channel.id in settings.no_spam_channels:
+		return
 	# Check spam
 	global last_winners
 	if not is_private(message.channel):
@@ -1298,6 +1305,8 @@ async def winners(ctx):
 @client.command(aliases=get_aliases(LEADERBOARD, exclude='leaderboard'))
 async def leaderboard(ctx):
 	message = ctx.message
+	if message.channel.id in settings.no_spam_channels:
+		return
 	# Check spam
 	global last_big_tippers
 	if not is_private(message.channel):
@@ -1337,6 +1346,8 @@ async def leaderboard(ctx):
 @client.command()
 async def toptips(ctx):
 	message = ctx.message
+	if message.channel.id in settings.no_spam_channels:
+		return
 	# Check spam
 	global last_top_tips
 	if not is_private(message.channel):
@@ -1351,6 +1362,8 @@ async def toptips(ctx):
 @client.command(aliases=['banstats'])
 async def tipstats(ctx):
 	message = ctx.message
+	if message.channel.id in settings.no_spam_channels:
+		return
 	tip_stats = db.get_tip_stats(message.author.id)
 	if tip_stats is None or len(tip_stats) == 0:
 		await post_response(message, STATS_ACCT_NOT_FOUND_TEXT)
