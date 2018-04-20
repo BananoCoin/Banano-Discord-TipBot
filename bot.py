@@ -720,7 +720,10 @@ async def balance(ctx):
 		available = balances['available']
 		send = balances['pending_send']
 		receive = balances['pending']
-		await post_response(message, BALANCE_TEXT, actual, available, send, receive)
+		await post_response(message, BALANCE_TEXT,	'{0:,.2f}'.format(actual),
+								'{0:,.2f}'.formatt(available),
+								'{0:,.2f}'.format(send),
+								'{0:,.2f}'.format(receive))
 
 @client.command(aliases=get_aliases(DEPOSIT, exclude='deposit'))
 async def deposit(ctx):
