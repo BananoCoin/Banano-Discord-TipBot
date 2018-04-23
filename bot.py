@@ -94,7 +94,7 @@ DEPOSIT ={
 		"CMD"      : "{0}deposit or {0}register".format(COMMAND_PREFIX),
 		"OVERVIEW" : "Shows your account address",
 		"INFO"     : ("Displays your tip bot account address along with a QR code" +
-				"\n- Send NANO to this address to increase your tip bot balance" +
+				"\n- Send BANANO to this address to increase your tip bot balance" +
 				"\n- If you do not have a tip bot account yet, this command will create one for you (receiving a tip automatically creates an account too)")
 }
 
@@ -326,8 +326,8 @@ DECREASETIPTOTAL = {
 SETTOPTIP = {
 		"CMD"      : "{0}settoptip".format(COMMAND_PREFIX),
 		"INFO"     : ("Allows you to set a users top tips. You can set 1 or all of monthly, 24h, and all-time " +
-				"toptips.\n Example: \n `settoptip @user alltime=2.38 month=1.23 day=0.5` " + 
-				"sets @user's biggest alltime tip to 2.38 NANO, month to 1.23 NANO, and day to 0.5 NANO")
+				"toptips.\n Example: \n `settoptip @user alltime=2.38 month=1.23 day=0.5` " +
+				"sets @user's biggest alltime tip to 2.38 BANANO, month to 1.23 BANANO, and day to 0.5 BANANO")
 }
 
 INCREASETIPCOUNT = {
@@ -364,7 +364,7 @@ DEPOSIT_TEXT_2="{0}"
 DEPOSIT_TEXT_3="QR: {0}"
 
 # generic tip replies (apply to numerous tip commands)
-INSUFFICIENT_FUNDS_TEXT="You don't have enough nano in your available balance!"
+INSUFFICIENT_FUNDS_TEXT="You don't have enough BANANO in your available balance!"
 TIP_RECEIVED_TEXT="You were tipped {0} BANANO by {1}. You can mute tip notifications from this person using `" + COMMAND_PREFIX + "mute {2}`"
 TIP_SELF="No valid recipients found in your tip.\n(You cannot tip yourself and certain other users are exempt from receiving tips)"
 
@@ -400,11 +400,11 @@ GIVEAWAY_MAX_FEE="Giveaway entry fee cannot be more than 5% of the prize pool"
 GIVEAWAY_ENDED="Congratulations! <@{0}> was the winner of the giveaway! They have been sent {1:.2f} BANANO!"
 GIVEAWAY_STATS_NF="There are {0} entries to win {1:.2f} BANANO ending in {2} - sponsored by {3}.\nUse:\n - `" + COMMAND_PREFIX + "ticket` to enter\n - `" + COMMAND_PREFIX + "donate` to add to the pot\n - `" + COMMAND_PREFIX + "ticketstatus` to check status of your entry"
 GIVEAWAY_STATS_FEE="There are {0} entries to win {1:.2f} BANANO ending in {2} - sponsored by {3}.\nEntry fee: {4} BANANO. Use:\n - `" + COMMAND_PREFIX + "ticket {4}` to enter\n - `" + COMMAND_PREFIX + "donate` to add to the pot\n - `" + COMMAND_PREFIX + "ticketstatus` to check the status of your entry"
-GIVEAWAY_STATS_INACTIVE="There are no active giveaways\n{0} BANANO required to to automatically start one! Use\n - `" + COMMAND_PREFIX + "donate` to donate to the next giveaway.\n - `" + COMMAND_PREFIX + "givearai` to sponsor your own giveaway\n - `" + COMMAND_PREFIX + "ticketstatus` to see how much you've already donated to the next giveaway"
+GIVEAWAY_STATS_INACTIVE="There are no active giveaways\n{0} BANANO required to to automatically start one! Use\n - `" + COMMAND_PREFIX + "donate` to donate to the next giveaway.\n - `" + COMMAND_PREFIX + "giveaway` to sponsor your own giveaway\n - `" + COMMAND_PREFIX + "ticketstatus` to see how much you've already donated to the next giveaway"
 ENTER_ADDED="You've been successfully entered into the giveaway"
 ENTER_DUP="You've already entered the giveaway"
 TIPGIVEAWAY_NO_ACTIVE="There are no active giveaways. Check giveaway status using `{0}giveawaystats`, or donate to the next one using `{0}tipgiveaway`".format(COMMAND_PREFIX)
-TIPGIVEAWAY_ENTERED_FUTURE="With your gorgeous donation I have reserved your ticket for the next community sponsored giveaway!"
+TIPGIVEAWAY_ENTERED_FUTURE="With your bantastic donation I have reserved your ticket for the next community sponsored giveaway!"
 
 # toptips
 TOPTIP_SPAM="No more top tips for {0} seconds"
