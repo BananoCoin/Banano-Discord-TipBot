@@ -26,7 +26,7 @@ import paginator
 
 logger = util.get_logger("main")
 
-BOT_VERSION = "2.2"
+BOT_VERSION = "2.2.1"
 
 # How many users to display in the top users count
 TOP_TIPPERS_COUNT=15
@@ -1227,11 +1227,16 @@ async def ticketstatus(ctx):
 		await post_dm(message.author, db.get_ticket_status(message.author.id))
 	await remove_message(message)
 
+last_gs = datetime.datetime.now()
 @client.command(aliases=get_aliases(GIVEAWAY_STATS, exclude='giveawaystats'))
 async def giveawaystats(ctx):
 	message = ctx.message
+	global last_gs
 	if message.channel.id in settings.no_spam_channels:
 		return
+	if 5 > (datetime.datetime.now() - last_gs).total_seconds():
+		return
+	last_gs = datetime.datetime.now()
 	stats = db.get_giveaway_stats()
 	if stats is None:
 		for_next = GIVEAWAY_MINIMUM - db.get_tipgiveaway_sum()
