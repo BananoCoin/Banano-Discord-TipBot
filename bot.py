@@ -527,6 +527,7 @@ initial_ts=datetime.datetime.now() - datetime.timedelta(seconds=SPAM_THRESHOLD)
 last_big_tippers = {}
 last_top_tips = {}
 last_winners = {}
+last_gs = {}
 def create_spam_dicts():
 	"""map every channel the client can see to datetime objects
 	   this way we can have channel-specific spam prevention"""
@@ -538,7 +539,7 @@ def create_spam_dicts():
 			last_big_tippers[c.id] = initial_ts
 			last_top_tips[c.id] = initial_ts
 			last_winners[c.id] = initial_ts
-
+			last_gs[c.id] = initial_ts
 @client.event
 async def on_ready():
 	logger.info("BananoBot++ v%s started", BOT_VERSION)
@@ -1227,16 +1228,18 @@ async def ticketstatus(ctx):
 		await post_dm(message.author, db.get_ticket_status(message.author.id))
 	await remove_message(message)
 
-last_gs = datetime.datetime.now()
 @client.command(aliases=get_aliases(GIVEAWAY_STATS, exclude='giveawaystats'))
 async def giveawaystats(ctx):
 	message = ctx.message
 	global last_gs
 	if message.channel.id in settings.no_spam_channels:
 		return
-	if 5 > (datetime.datetime.now() - last_gs).total_seconds():
-		return
-	last_gs = datetime.datetime.now()
+	if not is_private(message.channel):
+		if message.channel.id not in last_gs:
+			last_gs[message.channel.id] = datetime.datetime.now()
+		if 5 > (datetime.datetime.now() - last_gs[message.channel.id]).total_seconds():
+			return
+		last_gs[message.channel.id] = datetime.datetime.now()
 	stats = db.get_giveaway_stats()
 	if stats is None:
 		for_next = GIVEAWAY_MINIMUM - db.get_tipgiveaway_sum()
@@ -1279,6 +1282,8 @@ async def winners(ctx):
 	# Check spam
 	global last_winners
 	if not is_private(message.channel):
+		if message.channel.id not in last_winners:
+			last_winners[message.channel.id] = datetime.datetime.now()
 		tdelta = datetime.datetime.now() - last_winners[message.channel.id]
 		if SPAM_THRESHOLD > tdelta.seconds:
 			await post_response(message, WINNERS_SPAM, (SPAM_THRESHOLD - tdelta.seconds))
@@ -1319,6 +1324,8 @@ async def leaderboard(ctx):
 	# Check spam
 	global last_big_tippers
 	if not is_private(message.channel):
+		if message.channel.id not in last_big_tippers:
+			last_big_tippers[message.channel.id] = datetime.datetime.now()
 		tdelta = datetime.datetime.now() - last_big_tippers[message.channel.id]
 		if SPAM_THRESHOLD > tdelta.seconds:
 			await post_response(message, TOP_SPAM, (SPAM_THRESHOLD - tdelta.seconds))
@@ -1360,6 +1367,8 @@ async def toptips(ctx):
 	# Check spam
 	global last_top_tips
 	if not is_private(message.channel):
+		if not message.channel.id in last_top_tips:
+			last_top_tips[message.channel.id] = datetime.datetime.now()
 		tdelta = datetime.datetime.now() - last_top_tips[message.channel.id]
 		if SPAM_THRESHOLD > tdelta.seconds:
 			await post_response(message, TOPTIP_SPAM, (SPAM_THRESHOLD - tdelta.seconds))
