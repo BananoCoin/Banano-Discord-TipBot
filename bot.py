@@ -873,7 +873,7 @@ async def do_tip(message, rand=False):
 			db.update_tip_stats(user, required_amt)
 	except util.TipBotException as e:
 		if e.error_type == "amount_not_found" or e.error_type == "usage_error":
-			if random:
+			if rand:
 				await post_usage(message, TIPRANDOM)
 			else:
 				await post_usage(message, TIP)
