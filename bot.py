@@ -1825,7 +1825,7 @@ def find_address(input_text):
 def find_amount(input_text):
 	regex = r'(?:^|\s)(\d*\.?\d+)(?=$|\s)'
 	matches = re.findall(regex, input_text, re.IGNORECASE)
-	if len(matches) == 1:
+	if len(matches) >= 1:
 		return float(matches[0].strip())
 	else:
 		raise util.TipBotException("amount_not_found")
