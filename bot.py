@@ -149,9 +149,9 @@ RAIN = {
 ROLESOAK = {	"TRIGGER"  : ["bancitizens", "tc"],
 		"CMD"      : "{0}bancitizens, takes: amount".format(COMMAND_PREFIX),
 		"OVERVIEW" : "Rain across to all citizens",
-		"INFO"     : ("Distribute amount evenly to users who are citizens.\n" +
+		"INFO"     : ("Distribute amount evenly to users who are citizens and have been active relatively recently.\n" +
 				"Example: `{0}bancitizens 1000` - distributes 1000 evenly to users in Citizens role (similar to `rain`)" +
-				"\n**Minimum rolesoak amount: {1} BANANO**").format(COMMAND_PREFIX, ROLESOAK_MINIMUM)
+				"\n**Minimum bancitizens amount: {1} BANANO**").format(COMMAND_PREFIX, ROLESOAK_MINIMUM)
 }
 
 START_GIVEAWAY = {
@@ -1056,6 +1056,10 @@ async def bancitizens(ctx):
 			raise util.TipBotException("usage_error")
 		users_to_tip = []
 		for m in message.guild.members:
+			u = db.get_user_by_id(m.id)
+			delta = datetime.datetime.now() - u.last_msg
+			if delta.total_seconds() > 10800:
+				continue
 			for r in m.roles:
 				if r.name == 'Citizens':
 					users_to_tip.append(m)
@@ -1079,8 +1083,8 @@ async def bancitizens(ctx):
 		for m in users_to_tip:
 			uid = str(uuid.uuid4())
 			await wallet.make_transaction_to_user(user, tip_amount, m.id, m.name, uid)
-#			if not db.muted(m.id, message.author.id):
-#				await post_dm(m, TIP_RECEIVED_TEXT, tip_amount, message.author.name, message.author.id)
+			if not db.muted(m.id, message.author.id):
+				await post_dm(m, TIP_RECEIVED_TEXT, tip_amount, message.author.name, message.author.id)
 		await react_to_message(message, amount)
 		await message.add_reaction('\U0001F4A6')
 		db.update_tip_stats(user, real_amount,rain=True)
