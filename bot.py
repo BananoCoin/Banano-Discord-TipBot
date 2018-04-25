@@ -130,27 +130,27 @@ TIPRANDOM = {
 		"TRIGGER"  : ["banrandom", "br"],
 		"CMD"      : "{0}banrandom, takes: amount".format(COMMAND_PREFIX),
 		"OVERVIEW" : "Tips a random active user",
-		"INFO"     : ("Tips amount to a random active user. Active user list picked using same logic as rain" +
+		"INFO"     : ("Tips amount to a random active user. Active user list picked using same logic as brain" +
 				"\n**Minimum banrandom amount: {0} BANANO**").format(settings.tiprandom_minimum)
 }
 
 RAIN = {
-		"TRIGGER"  : ["rain"],
-		"CMD"      : "{0}rain, takes: amount".format(COMMAND_PREFIX),
+		"TRIGGER"  : ["brain"],
+		"CMD"      : "{0}brain, takes: amount".format(COMMAND_PREFIX),
 		"OVERVIEW" : "Split tip among all active* users",
 		"INFO"     : ("Distribute <amount> evenly to users who are eligible.\n" +
 				"Eligibility is determined based on your *recent* activity **and** contributions to public channels. " +
-				"Several factors are considered in picking who receives rain. If you aren't receiving it, you aren't contributing enough or your contributions are low-quality/spammy.\n" +
-				"Note: Users who have a status of 'offline' or 'do not disturb' do not receive rain.\n" +
-				"Example: `{0}rain 1000` - distributes 1000 evenly to eligible users (similar to `bansplit`)" +
-				"\n**Minimum rain amount: {1} BANANO**").format(COMMAND_PREFIX, RAIN_MINIMUM)
+				"Several factors are considered in picking who receives brain. If you aren't receiving it, you aren't contributing enough or your contributions are low-quality/spammy.\n" +
+				"Note: Users who have a status of 'offline' or 'do not disturb' do not receive brain.\n" +
+				"Example: `{0}brain 1000` - distributes 1000 evenly to eligible users (similar to `bansplit`)" +
+				"\n**Minimum brain amount: {1} BANANO**").format(COMMAND_PREFIX, RAIN_MINIMUM)
 }
 
 ROLESOAK = {	"TRIGGER"  : ["bancitizens", "tc"],
 		"CMD"      : "{0}bancitizens, takes: amount".format(COMMAND_PREFIX),
 		"OVERVIEW" : "Rain across to all citizens",
 		"INFO"     : ("Distribute amount evenly to users who are citizens and have been active relatively recently.\n" +
-				"Example: `{0}bancitizens 1000` - distributes 1000 evenly to users in Citizens role (similar to `rain`)" +
+				"Example: `{0}bancitizens 1000` - distributes 1000 evenly to users in Citizens role (similar to `brain`)" +
 				"\n**Minimum bancitizens amount: {1} BANANO**").format(COMMAND_PREFIX, ROLESOAK_MINIMUM)
 }
 
@@ -689,7 +689,7 @@ def build_help():
 	entries = []
 	author=AUTHOR_HEADER + " - by bbedward"
 	description=("**Reviews**:\n" + "'10/10 True Masterpiece' - BANANO Core Team" +
-			"\n'0/10 Didn't get rain' - Almost everybody else\n\n" +
+			"\n'0/10 Didn't get brain' - Almost everybody else\n\n" +
 			"BANANO Tip Bot is completely free to use and open source." +
 			" Developed by bbedward (reddit: /u/bbedward, discord: bbedward#9246)" +
 			"\nFeel free to send tips, suggestions, and feedback.\n\n" +
@@ -988,7 +988,7 @@ async def banfavorites(ctx):
 	await do_tipsplit(message, user_list=user_list)
 
 @client.command()
-async def rain(ctx):
+async def brain(ctx):
 	message = ctx.message
 	if is_private(message.channel):
 		return
