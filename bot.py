@@ -597,9 +597,10 @@ async def on_message(message):
 		return
 
 	citizen = False
-	for r in message.author.roles:
-		if r.name == 'Citizens':
-			citizen=True
+	if not is_private(message.channel):
+		for r in message.author.roles:
+			if r.name == 'Citizens':
+				citizen=True
 	if db.last_msg_check(message.author.id, message.content, is_private(message.channel), citizen) == False:
 		return
 	await client.process_commands(message)
