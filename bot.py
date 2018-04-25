@@ -1055,13 +1055,18 @@ async def bancitizens(ctx):
 		if ROLESOAK_MINIMUM > amount:
 			raise util.TipBotException("usage_error")
 		users_to_tip = []
+		active = db.get_active_users(90)
 		for m in message.guild.members:
-			u = db.get_user_by_id(m.id)
-			delta = datetime.datetime.now() - u.last_msg
-			if delta.total_seconds() > 10800:
+			if str(m.id) not in active or m.id == message.author.id:
 				continue
 			for r in m.roles:
 				if r.name == 'Citizens':
+					u = db.get_user_by_id(m.id)
+					if u is None:
+						break
+					delta = datetime.datetime.now() - u.last_msg
+					if delta.total_seconds() > 10800:
+						break
 					users_to_tip.append(m)
 					break
 		if len(users_to_tip) == 0:
@@ -1086,7 +1091,6 @@ async def bancitizens(ctx):
 			if not db.muted(m.id, message.author.id):
 				await post_dm(m, TIP_RECEIVED_TEXT, tip_amount, message.author.name, message.author.id)
 		await react_to_message(message, amount)
-		await message.add_reaction('\U0001F4A6')
 		db.update_tip_stats(user, real_amount,rain=True)
 		db.mark_user_active(user)
 	except util.TipBotException as e:
