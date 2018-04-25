@@ -146,11 +146,11 @@ RAIN = {
 				"\n**Minimum rain amount: {1} BANANO**").format(COMMAND_PREFIX, RAIN_MINIMUM)
 }
 
-ROLESOAK = {	"TRIGGER"  : ["rolesoak", "rs"],
-		"CMD"      : "{0}rolesoak, takes: roles".format(COMMAND_PREFIX),
-		"OVERVIEW" : "Rain across mentioned roles"
-		"INFO"     : ("Distribute amount evenly to users who are in the mentioned roles.\n" +
-				"Example: `{0}rolesoak 1000 @Citizens` - distributes 1000 evenly to users in Citizens role (similar to `rain`)" +
+ROLESOAK = {	"TRIGGER"  : ["bancitizens", "tc"],
+		"CMD"      : "{0}bancitizens, takes: amount".format(COMMAND_PREFIX),
+		"OVERVIEW" : "Rain across to all citizens",
+		"INFO"     : ("Distribute amount evenly to users who are citizens.\n" +
+				"Example: `{0}bancitizens 1000` - distributes 1000 evenly to users in Citizens role (similar to `rain`)" +
 				"\n**Minimum rolesoak amount: {1} BANANO**").format(COMMAND_PREFIX, ROLESOAK_MINIMUM)
 }
 
@@ -1045,8 +1045,8 @@ async def rain(ctx):
 		elif e.error_type == "invalid_tipsplit":
 			await post_dm(message.author, TIPSPLIT_SMALL)
 
-@client.command(aliases=get_aliases(ROLESOAK, exclude='rolesoak'))
-async def rolesoak(ctx):
+@client.command(aliases=get_aliases(ROLESOAK, exclude='bancitizens'))
+async def bancitizens(ctx):
 	message = ctx.message
 	if is_private(message.channel):
 		return
@@ -1054,18 +1054,12 @@ async def rolesoak(ctx):
 		amount = find_amount(message.content)
 		if ROLESOAK_MINIMUM > amount:
 			raise util.TipBotException("usage_error")
-		adjusted_roles = []
-		for r in message.role_mentions:
-			# exclude everyone role
-			if message.role != message.guild.default_role:
-				adjusted_roles.append(r)
-		if len(adjusted_roles) == 0:
-			raise util.TipBotException("usage_error")
 		users_to_tip = []
 		for m in message.guild.members:
-			intersection = [role for role in m.roles if role in adjusted_roles]
-			if len(intersection) > 0:
-				users_to_tip.append(m)
+			for r in m.roles:
+				if r.name == 'Citizens':
+					users_to_tip.append(m)
+					break
 		if len(users_to_tip) == 0:
 			raise util.TipBotException("no_recipient")
 		if 1 > int(amount / len(users_to_tip)):
@@ -1085,8 +1079,8 @@ async def rolesoak(ctx):
 		for m in users_to_tip:
 			uid = str(uuid.uuid4())
 			await wallet.make_transaction_to_user(user, tip_amount, m.id, m.name, uid)
-			if not db.muted(m.id, message.author.id):
-				await post_dm(m, TIP_RECEIVED_TEXT, actual_amt, message.author.name, message.author.id)
+#			if not db.muted(m.id, message.author.id):
+#				await post_dm(m, TIP_RECEIVED_TEXT, tip_amount, message.author.name, message.author.id)
 		await react_to_message(message, amount)
 		await message.add_reaction('\U0001F4A6')
 		db.update_tip_stats(user, real_amount,rain=True)
