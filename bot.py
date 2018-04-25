@@ -34,6 +34,8 @@ TOP_TIPPERS_COUNT=15
 WINNERS_COUNT=10
 # Minimum Amount for !rain
 RAIN_MINIMUM = settings.rain_minimum
+# Minimum Amount for !rolesoak
+ROLESOAK_MINIMUM = settings.rolesoak_minimum
 # Minimum amount for !startgiveaway
 GIVEAWAY_MINIMUM = settings.giveaway_minimum
 # Giveaway duration
@@ -142,6 +144,14 @@ RAIN = {
 				"Note: Users who have a status of 'offline' or 'do not disturb' do not receive rain.\n" +
 				"Example: `{0}rain 1000` - distributes 1000 evenly to eligible users (similar to `bansplit`)" +
 				"\n**Minimum rain amount: {1} BANANO**").format(COMMAND_PREFIX, RAIN_MINIMUM)
+}
+
+ROLESOAK = {	"TRIGGER"  : ["rolesoak", "rs"],
+		"CMD"      : "{0}rolesoak, takes: roles".format(COMMAND_PREFIX),
+		"OVERVIEW" : "Rain across mentioned roles"
+		"INFO"     : ("Distribute amount evenly to users who are in the mentioned roles.\n" +
+				"Example: `{0}rolesoak 1000 @Citizens` - distributes 1000 evenly to users in Citizens role (similar to `rain`)" +
+				"\n**Minimum rolesoak amount: {1} BANANO**").format(COMMAND_PREFIX, ROLESOAK_MINIMUM)
 }
 
 START_GIVEAWAY = {
@@ -342,7 +352,7 @@ DECREASETIPCOUNT = {
 
 COMMANDS = {
 		"ACCOUNT_COMMANDS"      : [BALANCE, DEPOSIT, WITHDRAW],
-		"TIPPING_COMMANDS"      : [TIP, TIPSPLIT, TIPRANDOM, RAIN],
+		"TIPPING_COMMANDS"      : [TIP, TIPSPLIT, TIPRANDOM, RAIN, ROLESOAK],
 		"GIVEAWAY_COMMANDS"     : [START_GIVEAWAY, ENTER, TIPGIVEAWAY, TICKETSTATUS],
 		"STATISTICS_COMMANDS"   : [GIVEAWAY_STATS, WINNERS, LEADERBOARD, TOPTIPS,STATS],
 		"FAVORITES_COMMANDS"    : [ADD_FAVORITE, DEL_FAVORITE, FAVORITES, TIP_FAVORITES],
@@ -1032,6 +1042,60 @@ async def rain(ctx):
 			await post_usage(message, RAIN)
 		elif e.error_type == "no_valid_recipient":
 			await post_dm(message.author, RAIN_NOBODY)
+		elif e.error_type == "invalid_tipsplit":
+			await post_dm(message.author, TIPSPLIT_SMALL)
+
+@client.command(aliases=get_aliases(ROLESOAK, exclude='rolesoak'))
+async def rolesoak(ctx):
+	message = ctx.message
+	if is_private(message.channel):
+		return
+	try:
+		amount = find_amount(message.content)
+		if ROLESOAK_MINIMUM > amount:
+			raise util.TipBotException("usage_error")
+		adjusted_roles = []
+		for r in message.role_mentions:
+			# exclude everyone role
+			if message.role != message.guild.default_role:
+				adjusted_roles.append(r)
+		if len(adjusted_roles) == 0:
+			raise util.TipBotException("usage_error")
+		users_to_tip = []
+		for m in message.guild.members:
+			intersection = [role for role in m.roles if role in adjusted_roles]
+			if len(intersection) > 0:
+				users_to_tip.append(m)
+		if len(users_to_tip) == 0:
+			raise util.TipBotException("no_recipient")
+		if 1 > int(amount / len(users_to_tip)):
+			raise util.TipBotException("invalid_tipsplit")
+		user = db.get_user_by_id(message.author.id)
+		if user is None:
+			return
+		balance = await wallet.get_balance(user)
+		user_balance = balance['available']
+		if amount > user_balance:
+			await add_x_reaction(message)
+			await post_dm(message.author, INSUFFICIENT_FUNDS_TEXT)
+			return
+		# Distribute Tips
+		tip_amount = int(amount / len(users_to_tip))
+		real_amount = tip_amount * len(users_to_tip)
+		for m in users_to_tip:
+			uid = str(uuid.uuid4())
+			await wallet.make_transaction_to_user(user, tip_amount, m.id, m.name, uid)
+			if not db.muted(m.id, message.author.id):
+				await post_dm(m, TIP_RECEIVED_TEXT, actual_amt, message.author.name, message.author.id)
+		await react_to_message(message, amount)
+		await message.add_reaction('\U0001F4A6')
+		db.update_tip_stats(user, real_amount,rain=True)
+		db.mark_user_active(user)
+	except util.TipBotException as e:
+		if e.error_type == "amount_not_found" or e.error_type == "usage_error":
+			await post_usage(message, ROLESOAK)
+		elif e.error_type == "no_recipient":
+			await post_dm(message.author, "Could not find any users on the server in mentioned role(s)")
 		elif e.error_type == "invalid_tipsplit":
 			await post_dm(message.author, TIPSPLIT_SMALL)
 
