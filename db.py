@@ -526,7 +526,7 @@ def mark_transaction_processed(uuid, tranid):
 # Return false if last message was < LAST_MSG_TIME
 # If > LAST_MSG_TIME, return True and update the user
 # Also return true, if user does not have a tip bot acct yet
-def last_msg_check(user_id, content, is_private):
+def last_msg_check(user_id, content, is_private, citizen):
 	user = get_user_by_id(user_id)
 	if user is None:
 		return True
@@ -535,10 +535,10 @@ def last_msg_check(user_id, content, is_private):
 	if since_last_msg_s < LAST_MSG_TIME:
 		return False
 	else:
-		update_last_msg(user, since_last_msg_s, content, is_private)
+		update_last_msg(user, since_last_msg_s, content, is_private, citizen)
 	return True
 
-def update_last_msg(user, delta, content, is_private):
+def update_last_msg(user, delta, content, is_private, citizen):
 	content_adjusted = unicode_strip(content)
 	words = content_adjusted.split(' ')
 	adjusted_count = 0
@@ -559,7 +559,7 @@ def update_last_msg(user, delta, content, is_private):
 					adjusted_count += 1
 		if adjusted_count >= LAST_MSG_RAIN_WORDS:
 			break
-	if delta >= 1800:
+	if (not citizen and delta >= 1800) or (citizen and delta >= 5400):
 		user.last_msg_count = 0
 	if adjusted_count >= LAST_MSG_RAIN_WORDS and not is_private and (datetime.datetime.now() - user.last_msg_rain).total_seconds() > LAST_MSG_RAIN_DELTA:
 		user.last_msg_count += 1
