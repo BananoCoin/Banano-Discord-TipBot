@@ -27,6 +27,10 @@ def communicate_wallet(wallet_command):
 	parsed_json = json.loads(body.decode('iso-8859-1'))
 	return parsed_json
 
+async def get_blocks():
+	wallet_command = {'action':'block_count'}
+	wallet_output = await asyncio.get_event_loop().run_in_executor(None, communicate_wallet, wallet_command)
+	return (wallet_output['count'], wallet_output['unchecked'])
 
 async def create_or_fetch_user(user_id, user_name):
 	logger.info('attempting to fetch user %s ...', user_id)

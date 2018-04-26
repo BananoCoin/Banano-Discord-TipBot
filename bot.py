@@ -557,6 +557,7 @@ last_big_tippers = {}
 last_top_tips = {}
 last_winners = {}
 last_gs = {}
+last_blocks = {}
 def create_spam_dicts():
 	"""map every channel the client can see to datetime objects
 	   this way we can have channel-specific spam prevention"""
@@ -569,6 +570,8 @@ def create_spam_dicts():
 			last_top_tips[c.id] = initial_ts
 			last_winners[c.id] = initial_ts
 			last_gs[c.id] = initial_ts
+			last_blocks[c.id] = initial_ts
+
 @client.event
 async def on_ready():
 	logger.info("BananoBot++ v%s started", BOT_VERSION)
@@ -1646,6 +1649,21 @@ async def unmute(ctx):
 		await post_dm(message.author, "{0} users have been unmuted!", unmute_count)
 	else:
 		await post_dm(message.author, "I couldn't find anybody in your message to unmute!")
+
+@client.command()
+async def blocks(ctx):
+	message = ctx.message
+	global last_blocks
+	if not is_private(message.channel):
+		if message.channel.id not in last_blocks:
+			last_blocks[message.channel.id] = datetime.datetime.now()
+		tdelta = datetime.datetime.now() - last_blocks[message.channel.id]
+		if SPAM_DELTA > tdelta.seconds:
+			await post_response(message, "No more blocks for {0} seconds", (SPAM_THRESHOLD - tdelta.seconds))
+			return
+		last_blocks[message.channel.id] = datetime.datetime.now()
+	count,unchecked = await wallet.get_blocks()
+	await post_response(message, "```Count: {0}\nUnchecked: {1}```", count, unchecked)
 
 @client.command()
 async def banned(ctx):
