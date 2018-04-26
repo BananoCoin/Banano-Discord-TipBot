@@ -675,11 +675,11 @@ def silenced(user_id):
 	user_id = str(user_id)
 	return SilenceList.select().where(SilenceList.user_id == user_id).count() > 0
 	
-def silence(user_id, expiration=None):
+def silence(user_id, server_id, expiration=None):
 	user_id = str(user_id)
 	if silenced(user_id):
 		return False
-	s = SilenceList(user_id=user_id, expiration=expiration)
+	s = SilenceList(user_id=user_id, expiration=expiration, server_id=server_id)
 	s.save()
 	return True
 	
@@ -809,7 +809,8 @@ class MutedList(Model):
 class SilenceList(Model):
 	user_id = CharField()
 	expiration = DateTimeField(default=None,null=True)
-
+	server_id = IntegerField()
+	
 	class Meta:
 		database = db
 	

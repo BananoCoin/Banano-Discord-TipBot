@@ -606,7 +606,14 @@ async def unsilence_users():
 		for s in db.get_silenced():
 			if s.expiration is None:
 				continue
-			elif datetime.datetime.now() >= expiration:
+			elif datetime.datetime.now() >= s.expiration:
+				muzzled = discord.utils.get(message.guild.roles,name='muzzled')
+				for guild in client.guilds:
+					if guild.id == s.server_id:
+						for member in guild.members:
+							if member.id == int(s.user_id):
+								member.remove_roles(muzzled)
+								break
 				db.unsilence(s.user_id)
 	except Exception as ex:
 		logger.exception(ex)
@@ -1909,7 +1916,7 @@ async def silence(ctx):
 			if duration is not None:
 				expiration = datetime.datetime.now() + datetime.timedelta(minutes=int(duration))
 			for member in message.mentions:
-				if not db.silence(member.id, expiration=expiration):
+				if not db.silence(member.id, message.guild.id, expiration=expiration):
 					await post_response(message, '<@{0}> is already muzzled', member.id)
 					continue
 				await member.add_roles(muzzled)
