@@ -1663,7 +1663,7 @@ async def blocks(ctx):
 			return
 		last_blocks[message.channel.id] = datetime.datetime.now()
 	count,unchecked = await wallet.get_blocks()
-	await post_response(message, "```Count: {0}\nUnchecked: {1}```", count, unchecked)
+	await post_response(message, "```Count: {0:,}\nUnchecked: {1:,}```", count, unchecked)
 
 @client.command()
 async def banned(ctx):
