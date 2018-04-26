@@ -597,7 +597,7 @@ async def on_member_join(member):
 	if db.silenced(member.id):
 		muzzled = discord.utils.get(message.guild.roles,name='muzzled')
 		await member.add_roles(muzzled)
-		
+
 # Periodic check job to unsilence users
 async def unsilence_users():
 	try:
@@ -607,9 +607,9 @@ async def unsilence_users():
 			if s.expiration is None:
 				continue
 			elif datetime.datetime.now() >= s.expiration:
-				muzzled = discord.utils.get(message.guild.roles,name='muzzled')
 				for guild in client.guilds:
 					if guild.id == s.server_id:
+						muzzled = discord.utils.get(guild.roles,name='muzzled')
 						for member in guild.members:
 							if member.id == int(s.user_id):
 								member.remove_roles(muzzled)
@@ -617,7 +617,7 @@ async def unsilence_users():
 				db.unsilence(s.user_id)
 	except Exception as ex:
 		logger.exception(ex)
-			
+
 async def check_for_withdraw():
 	"""check_for_withdraw() checks withdraw queue for messages.
 	   After message is retrieved, send a DM to the user with
