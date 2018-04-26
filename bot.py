@@ -589,7 +589,28 @@ async def on_ready():
 	asyncio.get_event_loop().create_task(check_for_withdraw())
 	logger.info("Continuing outstanding giveaway")
 	asyncio.get_event_loop().create_task(start_giveaway_timer())
+	logger.info("Running unsilence job")
+	asyncio.get_event_loop().create_task(unsilence_users())
 
+@client.event
+async def on_member_join(member):
+	if db.silenced(member.id):
+		muzzled = discord.utils.get(message.guild.roles,name='muzzled')
+		await member.add_roles(muzzled)
+		
+# Periodic check job to unsilence users
+async def unsilence_users():
+	try:
+		await asyncio.sleep(10)
+		asyncio.get_event_loop().create_task(unsilence_users())
+		for s in db.get_silenced():
+			if s.expiration is None:
+				continue
+			elif datetime.datetime.now() >= expiration:
+				db.unsilence(s.user_id)
+	except Exception as ex:
+		logger.exception(ex)
+			
 async def check_for_withdraw():
 	"""check_for_withdraw() checks withdraw queue for messages.
 	   After message is retrieved, send a DM to the user with
@@ -1872,6 +1893,44 @@ async def release(ctx):
 			for member in message.mentions:
 				await member.remove_roles(jail)
 				await post_response(message, RELEASE, mention_id=member.id)
+
+@client.command(aliases=['muzzle'])
+async def silence(ctx):
+	message = ctx.message
+	if is_admin(message.author):
+		if len(message.mentions) > 0:
+			muzzled = discord.utils.get(message.guild.roles,name='muzzled')
+			duration = None
+			try:
+				duration = find_amount(message.content)
+			except util.TipBotException:
+				pass
+			expiration = None
+			if duration is not None:
+				expiration = datetime.datetime.now() + datetime.timedelta(minutes=int(duration))
+			for member in message.mentions:
+				if not db.silence(member.id, expiration=expiration):
+					await post_response(message, '<@{0}> is already muzzled', member.id)
+					continue
+				await member.add_roles(muzzled)
+				if duration is not None:
+					await post_response(message, '<@{0}> has been muzzled for {1} minutes', member.id, duration)
+				else:
+					await post_response(message, '<@{0}> has been muzzled indefinitely', member.id)
+			await message.add_reaction('\U0001f694')
+
+@client.command(aliases=['unmuzzle'])
+async def unsilence(ctx):
+	message = ctx.message
+	if is_admin(message.author):
+		if len(message.mentions) > 0:
+			muzzled = discord.utils.get(message.guild.roles,name='muzzled')
+			for member in message.mentions:
+				await member.remove_roles(muzzled)
+				if not db.unsilence(member.id):
+					await post_response(message, '<@{0}> is not muzzled', member.id)
+					continue
+				await post_response(message, '<@{0}> has been unmuzzled', member.id)
 
 @client.command()
 async def citizenship(ctx):

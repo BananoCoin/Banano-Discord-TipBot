@@ -671,7 +671,27 @@ def unmute(source_user, target_user):
 	target_user = str(target_user)
 	return MutedList.delete().where((MutedList.user_id==source_user) & (MutedList.muted_id==target_user)).execute()
 
-
+def silenced(user_id):
+	user_id = str(user_id)
+	return SilenceList.select().where(SilenceList.user_id == user_id).count() > 0
+	
+def silence(user_id, expiration=None):
+	user_id = str(user_id)
+	if silenced(user_id):
+		return False
+	s = SilenceList(user_id=user_id, expiration=expiration)
+	s.save()
+	return True
+	
+def unsilence(user_id):
+	user_id = str(user_id)
+	if not silenced(user_id):
+		return False
+	return SilenceList.delete().where(SilenceList.user_id == user_id).execute() > 0
+		
+def get_silenced():
+	return SilenceList.select()
+		
 # Returns seconds user must wait to tiprandom again
 def tiprandom_check(user):
 	delta = (datetime.datetime.now() - user.last_random).total_seconds()
@@ -784,10 +804,18 @@ class MutedList(Model):
 
 	class Meta:
 		database = db
+		
+# Silence list (this is for server-wide silence role)
+class SilenceList(Model):
+	user_id = CharField()
+	expiration = DateTimeField(default=None,null=True)
 
+	class Meta:
+		database = db
+	
 def create_db():
 	db.connect()
-	db.create_tables([User, Transaction, Giveaway, Contestant, BannedUser, UserFavorite, MutedList], safe=True)
+	db.create_tables([User, Transaction, Giveaway, Contestant, BannedUser, UserFavorite, MutedList, SilenceList], safe=True)
 	logger.debug("DB Connected")
 
 create_db()
