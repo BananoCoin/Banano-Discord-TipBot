@@ -454,6 +454,17 @@ client.remove_command('help')
 # Thread to process send transactions
 # Queue is used to communicate back to main thread
 withdrawq = Queue()
+
+def receive_block(account, block):
+	logger.info("Pocketing %s for account %s", block, account)
+	wallet_command = {
+		'action':'receive',
+		'wallet':settings.wallet,
+		'account':account,
+		'block':block
+	}
+	wallet.communicate_wallet(wallet_command)
+
 class SendProcessor(Thread):
 	def __init__(self):
 		super(SendProcessor, self).__init__()
@@ -510,6 +521,14 @@ class SendProcessor(Thread):
 					logger.info('TX processed. UID: %s, TXID: %s', uid, txid)
 					if target_id is None:
 						withdrawq.put({'user_id':source_id, 'txid':txid})
+					# Also generate receive block if amount is not too tiny
+					if int(amount) >= TIPGIVEAWAY_AUTO_ENTRY and target_id is not None:
+						# and spawn a thread to do this job
+						try:
+							rthread = threading.Thread(target=receive_block, args=[to_address,txid])
+							rthread.start()
+						except:
+							pass
 				else:
 					# Not sure what happen but we'll retry a few times
 					if attempts >= MAX_TX_RETRIES:
