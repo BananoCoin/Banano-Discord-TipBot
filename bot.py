@@ -1658,7 +1658,7 @@ async def blocks(ctx):
 		if message.channel.id not in last_blocks:
 			last_blocks[message.channel.id] = datetime.datetime.now()
 		tdelta = datetime.datetime.now() - last_blocks[message.channel.id]
-		if SPAM_DELTA > tdelta.seconds:
+		if SPAM_THRESHOLD > tdelta.seconds:
 			await post_response(message, "No more blocks for {0} seconds", (SPAM_THRESHOLD - tdelta.seconds))
 			return
 		last_blocks[message.channel.id] = datetime.datetime.now()
