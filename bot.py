@@ -612,7 +612,7 @@ async def unsilence_users():
 						muzzled = discord.utils.get(guild.roles,name='muzzled')
 						for member in guild.members:
 							if member.id == int(s.user_id):
-								member.remove_roles(muzzled)
+								await member.remove_roles(muzzled)
 								break
 				db.unsilence(s.user_id)
 	except Exception as ex:
