@@ -26,7 +26,7 @@ import paginator
 
 logger = util.get_logger("main")
 
-BOT_VERSION = "2.2.1"
+BOT_VERSION = "2.3"
 
 # How many users to display in the top users count
 TOP_TIPPERS_COUNT=15
@@ -283,6 +283,31 @@ MUTED = {
 }
 
 ### ADMIN-only commands
+FREEZE = {
+		"CMD"      : "{0}freeze, takes: users".format(COMMAND_PREFIX),
+		"INFO"     : "Suspends every action from user, including withdraw"
+}
+
+UNFREEZE = {
+		"CMD"      : "{0}unfreeze, takes: users".format(COMMAND_PREFIX),
+		"INFO"     : "Unfreezes mentioned user"
+}
+
+FROZEN = {
+		"CMD"	   : "{0}frozen".format(COMMAND_PREFIX),
+		"INFO"     : "List frozen users"
+}
+
+WALLET_FOR = {
+		"CMD"      : "{0}walletfor, takes: user".format(COMMAND_PREFIX),
+		"INFO"     : "Returns wallet address for mentioned user"
+}
+
+USER_FOR_WALLET = {
+		"CMD"      : "{0}userforwallet, takes: user".format(COMMAND_PREFIX),
+		"INFO"     : "Returns user owning wallet address"
+}
+
 PAUSE = {
 		"CMD"      : "{0}pause".format(COMMAND_PREFIX),
 		"INFO"     : "Pause all transaction-related activity"
@@ -357,7 +382,7 @@ COMMANDS = {
 		"STATISTICS_COMMANDS"   : [GIVEAWAY_STATS, WINNERS, LEADERBOARD, TOPTIPS,STATS],
 		"FAVORITES_COMMANDS"    : [ADD_FAVORITE, DEL_FAVORITE, FAVORITES, TIP_FAVORITES],
 		"NOTIFICATION_COMMANDS" : [MUTE, UNMUTE, MUTED],
-		"ADMIN_COMMANDS"	: [PAUSE, UNPAUSE, TIPBAN, TIPUNBAN, BANNED, STATSBAN, STATSUNBAN, STATSBANNED, INCREASETIPTOTAL, DECREASETIPTOTAL, SETTOPTIP, INCREASETIPCOUNT, DECREASETIPCOUNT]
+		"ADMIN_COMMANDS"	: [FREEZE, UNFREEZE, FROZEN, USER_FOR_WALLET, WALLET_FOR, PAUSE, UNPAUSE, TIPBAN, TIPUNBAN, BANNED, STATSBAN, STATSUNBAN, STATSBANNED, INCREASETIPTOTAL, DECREASETIPTOTAL, SETTOPTIP, INCREASETIPCOUNT, DECREASETIPCOUNT]
 }
 
 ### Response Templates###
@@ -442,6 +467,7 @@ CITIZENSHIP="```I hereby declare you a Citizen of the Banano Republic, may the B
 DEPORT="```I hereby withdraw your Citizenship to the Banano Republic, we don’t want to talk to you no more, you empty-headed animal-food-trough wiper. We fart in your general direction. Your mother was a hamster, and your father smelt of elderberries.```"
 TROLL="```You have been marked as a TROLL and are no longer a Citizen in the Banano Republic```"
 UNTROLL="```You are no longer known as a TROLL in the Banano Republic, please reapply for Citizenship.```"
+FROZEN_MSG="Your account is frozen. Contact an admin for help"
 ### END Response Templates ###
 
 # Paused flag, indicates whether or not bot is paused
@@ -783,7 +809,7 @@ async def adminhelp(ctx):
 async def balance(ctx):
 	message = ctx.message
 	if is_private(message.channel):
-		user = db.get_user_by_id(message.author.id)
+		user = db.get_user_by_id(message.author.id, user_name=message.author.name)
 		if user is None:
 			return
 		balances = await wallet.get_balance(user)
@@ -809,14 +835,16 @@ async def withdraw(ctx):
 	if paused:
 		await pause_msg(message)
 		return
-	if is_private(message.channel):
+	elif db.is_frozen(message.author.id):
+		await post_dm(message.author, FROZEN_MSG)
+	elif is_private(message.channel):
 		try:
 			withdraw_amount = find_amount(message.content)
 		except util.TipBotException as e:
 			withdraw_amount = 0
 		try:
 			withdraw_address = find_address(message.content)
-			user = db.get_user_by_id(message.author.id)
+			user = db.get_user_by_id(message.author.id, user_name=message.author.name)
 			if user is None:
 				return
 			last_withdraw_delta = db.get_last_withdraw_delta(user.user_id)
@@ -865,9 +893,11 @@ async def do_tip(message, rand=False):
 	elif paused:
 		await pause_msg(message)
 		return
-
+	elif db.is_frozen(message.author.id):
+		await post_dm(message.author, FROZEN_MSG)
+		return
 	try:
-		user = db.get_user_by_id(message.author.id)
+		user = db.get_user_by_id(message.author.id, user_name=message.author.name)
 		if user is None:
 			return
 		amount = find_amount(message.content)
@@ -935,7 +965,7 @@ async def do_tip(message, rand=False):
 		# Post message reactions
 		await react_to_message(message, required_amt)
 		# Update tip stats
-		if message.channel.id != 416306340848336896 and not user.stats_ban:
+		if message.channel.id not in (416306340848336896, 443985110371401748) and not user.stats_ban:
 			db.update_tip_stats(user, required_amt)
 	except util.TipBotException as e:
 		if e.error_type == "amount_not_found" or e.error_type == "usage_error":
@@ -955,6 +985,9 @@ async def do_tipsplit(message, user_list=None):
 		return
 	elif paused:
 		await pause_msg(message)
+		return
+	elif db.is_frozen(message.author.id):
+		await post_dm(message.author, FROZEN_MSG)
 		return
 	try:
 		amount = find_amount(message.content)
@@ -979,7 +1012,7 @@ async def do_tipsplit(message, user_list=None):
 		# Remove duplicates
 		users_to_tip = list(set(users_to_tip))
 		# Make sure user has enough in their balance
-		user = db.get_user_by_id(message.author.id)
+		user = db.get_user_by_id(message.author.id, user_name=message.author.name)
 		if user is None:
 			return
 		balance = await wallet.get_balance(user)
@@ -1002,7 +1035,7 @@ async def do_tipsplit(message, user_list=None):
 				if not db.muted(member.id, message.author.id):
 					await post_dm(member, TIP_RECEIVED_TEXT, tip_amount, message.author.name, message.author.id, skip_dnd=True)
 		await react_to_message(message, amount)
-		if message.channel.id != 416306340848336896 and not user.stats_ban:
+		if message.channel.id not in (416306340848336896, 443985110371401748) and not user.stats_ban:
 			db.update_tip_stats(user, real_amount)
 	except util.TipBotException as e:
 		if e.error_type == "amount_not_found" or e.error_type == "usage_error":
@@ -1018,7 +1051,7 @@ async def do_tipsplit(message, user_list=None):
 @client.command(aliases=get_aliases(TIP_FAVORITES,exclude='banfavorites'))
 async def banfavorites(ctx):
 	message = ctx.message
-	user = db.get_user_by_id(message.author.id)
+	user = db.get_user_by_id(message.author.id, user_name=message.author.name)
 	if user is None:
 		return
 	# Spam Check
@@ -1065,7 +1098,7 @@ async def brain(ctx):
 			raise util.TipBotException("no_valid_recipient")
 		if int(amount / len(users_to_tip)) < 1:
 			raise util.TipBotException("invalid_tipsplit")
-		user = db.get_user_by_id(message.author.id)
+		user = db.get_user_by_id(message.author.id, user_name=message.author.name)
 		if user is None:
 			return
 		balance = await wallet.get_balance(user)
@@ -1129,7 +1162,7 @@ async def bancitizens(ctx):
 			raise util.TipBotException("no_recipient")
 		if 1 > int(amount / len(users_to_tip)):
 			raise util.TipBotException("invalid_tipsplit")
-		user = db.get_user_by_id(message.author.id)
+		user = db.get_user_by_id(message.author.id, user_name=message.author.name)
 		if user is None:
 			return
 		balance = await wallet.get_balance(user)
@@ -1219,7 +1252,7 @@ async def giveaway(ctx):
 
 		# Sanity checks
 		max_fee = int(0.05 * amount)
-		user = db.get_user_by_id(message.author.id)
+		user = db.get_user_by_id(message.author.id, user_name=message.author.name)
 		if fee == -1 or duration == -1:
 			raise util.TipBotException("usage_error")
 		elif amount < GIVEAWAY_MINIMUM:
@@ -1271,7 +1304,7 @@ async def tip_giveaway(message, ticket=False):
 	try:
 		giveaway = db.get_giveaway()
 		amount = find_amount(message.content)
-		user = db.get_user_by_id(message.author.id)
+		user = db.get_user_by_id(message.author.id, user_name=message.author.name)
 		if user is None:
 			return
 		balance = await wallet.get_balance(user)
@@ -1691,6 +1724,12 @@ async def blocks(ctx):
 	await post_response(message, "```Count: {0:,}\nUnchecked: {1:,}```", int(count), int(unchecked))
 
 @client.command()
+async def frozen(ctx):
+	message = ctx.message
+	if is_admin(message.author):
+		await post_dm(message.author, db.frozen())
+	
+@client.command()
 async def banned(ctx):
 	message = ctx.message
 	if is_admin(message.author):
@@ -1700,8 +1739,8 @@ async def banned(ctx):
 async def statsbanned(ctx):
 	message = ctx.message
 	if is_admin(message.author):
-		await post_dm(message.author, db.get_statsbanned())
-
+		await post_dm(message.author, db.get_statsbanned())		
+		
 @client.command()
 async def pause(ctx):
 	message = ctx.message
@@ -1717,6 +1756,16 @@ async def unpause(ctx):
 		global paused
 		paused = False
 		await post_response(message, "Transaction-related activity is no longer suspended")
+
+@client.command()
+async def freeze(ctx):
+	message = ctx.message
+	if is_admin(message.author):
+		for member in message.mentions:
+			if db.freeze(member):
+				await post_dm(message.author, "User {0} is frozen", member.name)
+			else:
+				await post_dm(message.author, "Couldn't freeze user they may already be frozen")
 
 @client.command()
 async def tipban(ctx):
@@ -1742,6 +1791,16 @@ async def statsban(ctx):
 				await post_dm(message.author, STATSBAN_DUP, member.name)
 
 @client.command()
+async def unfreeze(ctx):
+	message = ctx.message
+	if is_admin(message.author):
+		for member in message.mentions:
+			if db.unfreeze(member.id):
+				await post_dm(message.author, "{0} has been unfrozen", member.name)
+			else:
+				await post_dm(message.author, "Couldn't unfreeze, {0} may not be frozen", member.name)
+
+@client.command()
 async def tipunban(ctx):
 	await do_tipunban(ctx.message)
 
@@ -1762,6 +1821,29 @@ async def statsunban(ctx):
 				await post_dm(message.author, STATSUNBAN_SUCCESS, member.name)
 			else:
 				await post_dm(message.author, STATSUNBAN_DUP, member.name)
+
+@client.command(aliases=['wfu'])
+async def walletfor(ctx, user: discord.Member = None, user_id: str = None):
+	if user is None and user_id is None:
+		await post_usage(ctx.message, WALLET_FOR)
+		return
+	wa = None;
+	if user is not None:
+		wa = db.get_address(user.id)
+	else:
+		wa = db.get_address(user_id)
+	if wa is not None:
+		await post_dm(ctx.message.author, "Address for user: {0}", wa)
+	else:
+		await post_dm(ctx.message.author, "Could not find address for user")
+
+@client.command(aliases=['ufw'])
+async def userforwallet(ctx, address: str):
+	u = db.get_user_by_wallet_address(address)
+	if u is None:
+		await post_dm(ctx.message.author, "No user with that wallet address")
+	else:
+		await post_dm(ctx.message.author, "username: {0}, discordid: {1}", u.user_name, u.user_id)
 
 @client.command(aliases=['addtips', 'incrementtips'])
 async def increasetips(ctx, amount: float = -1.0, user: discord.Member = None):
