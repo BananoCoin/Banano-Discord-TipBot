@@ -27,9 +27,12 @@ db = SqliteQueueDatabase('discord.db')
 logger = util.get_logger("db")
 
 ### User Stuff
-def get_user_by_id(user_id):
+def get_user_by_id(user_id, user_name=None):
 	try:
 		user = User.get(user_id=str(user_id))
+		if user_name is not None and user_name != user.user_name:
+			User.update(user_name=user_name).where(User.id == user.id).execute()
+			user.user_name = user_name
 		return user
 	except User.DoesNotExist:
 		# logger.debug('user %s does not exist !', user_id)
@@ -58,8 +61,7 @@ def get_active_users(since_minutes):
 	return return_ids
 
 def get_address(user_id):
-	user_id = str(user_id)
-	logger.info('getting wallet address for user %s ...', user_id)
+	logger.info('getting wallet address for user %d ...', user_id)
 	user = get_user_by_id(user_id)
 	if user is None:
 		return None
@@ -108,21 +110,21 @@ def update_tip_stats(user, tip, rain=False, giveaway=False):
 	(User.update(
 		tipped_amount=(User.tipped_amount + (tip)),
 		tip_count = User.tip_count + 1
-		).where(User.user_id == user.user_id)
+		).where(User.id == user.id)
 		).execute()
 	# Update all time tip if necessary
 	if tip > int(float(user.top_tip)):
 		(User.update(
 			top_tip = tip,
 			top_tip_ts = datetime.datetime.now()
-			).where(User.user_id == user.user_id)
+			).where(User.id == user.id)
 			).execute()
 	# Update monthly tip if necessary
 	if user.top_tip_month_ts.month != datetime.datetime.now().month or tip > int(float(user.top_tip_month)):
 		(User.update(
 			top_tip_month = tip,
 			top_tip_month_ts = datetime.datetime.now()
-			).where(User.user_id == user.user_id)
+			).where(User.id == user.id)
 			).execute()
 	# Update 24H tip if necessary
 	delta = datetime.datetime.now() - user.top_tip_day_ts
@@ -130,20 +132,20 @@ def update_tip_stats(user, tip, rain=False, giveaway=False):
 		(User.update(
 			top_tip_day = tip,
 			top_tip_day_ts = datetime.datetime.now()
-			).where(User.user_id == user.user_id)
+			).where(User.id == user.id)
 			).execute()
 	# Update rain or giveaway stats
 	if rain:
 		(User.update(
 			rain_amount = User.rain_amount + (tip)
 			)
-			.where(User.user_id == user.user_id)
+			.where(User.id == user.id)
 		).execute()
 	elif giveaway:
 		(User.update(
 			giveaway_amount = User.giveaway_amount + (tip)
 			)
-			.where(User.user_id == user.user_id)
+			.where(User.id == user.id)
 		).execute()
 
 def update_tip_total(user_id, new_total):
@@ -358,6 +360,31 @@ def get_statsbanned():
 	ret = "```"
 	for idx,user in enumerate(statsbanned):
 		ret += "{0}: {1}\n".format(idx+1,user.user_name)
+	ret += "```"
+	return ret
+
+def is_frozen(user_id):
+	return FrozenUser.select().where(FrozenUser.user_id == user_id).count() > 0
+
+def freeze(user):
+	if not is_frozen(user.id):
+		fu = FrozenUser(user_id=user.id, user_name=user.name)
+		saved = fu.save()
+		return saved > 0
+	return False
+
+def unfreeze(user_id):
+	if not is_frozen(user_id):
+		return False
+	return FrozenUser.delete().where(FrozenUser.user_id==user_id).execute() > 0
+
+def frozen():
+	frozen = FrozenUser.select()
+	if frozen.count() == 0:
+		return "```Nobody Frozen```"
+	ret = "```"
+	for idx, fu in enumerate(frozen):
+		ret += "{0}: {1}\n".format(idx+1, fu.user_name)
 	ret += "```"
 	return ret
 
@@ -686,8 +713,14 @@ def tipfavorites_check(user):
 	else:
 		User.update(last_favorites=datetime.datetime.now()).where(User.user_id == user.user_id).execute()
 		return 0
+
+# Base Model
+class BaseModel(Model):
+	class Meta:
+		database = db
+
 # User table
-class User(Model):
+class User(BaseModel):
 	user_id = CharField(unique=True)
 	user_name = CharField()
 	wallet_address = CharField(unique=True)
@@ -712,11 +745,8 @@ class User(Model):
 	last_random = DateTimeField(default=datetime.datetime.now(), constraints=[SQL('DEFAULT CURRENT_TIMESTAMP')])
 	last_favorites = DateTimeField(default=datetime.datetime.now(), constraints=[SQL('DEFAULT CURRENT_TIMESTAMP')])
 
-	class Meta:
-		database = db
-
 # Transaction table, keep trac of sends to process
-class Transaction(Model):
+class Transaction(BaseModel):
 	uid = CharField(unique=True)
 	source_address = CharField()
 	to_address = CharField(null = True)
@@ -728,11 +758,8 @@ class Transaction(Model):
 	attempts = IntegerField(default=0, constraints=[SQL('DEFAULT 0')])
 	giveawayid = IntegerField(null = True)
 
-	class Meta:
-		database = db
-
 # Giveaway table, keep track of current giveaway
-class Giveaway(Model):
+class Giveaway(BaseModel):
 	started_by = CharField() # User ID
 	started_by_name = CharField() # User Name
 	active = BooleanField()
@@ -743,56 +770,44 @@ class Giveaway(Model):
 	winner_id = CharField(null = True)
 	entry_fee = IntegerField()
 
-	class Meta:
-		database = db
-
 # Giveaway Entrants
-class Contestant(Model):
+class Contestant(BaseModel):
 	user_id = CharField(unique=True)
 	banned = BooleanField()
 
-	class Meta:
-		database = db
-
 # Banned List
-class BannedUser(Model):
+class BannedUser(BaseModel):
 	user_id = CharField()
 
-	class Meta:
-		database = db
-
 # Favorites
-class UserFavorite(Model):
+class UserFavorite(BaseModel):
 	user_id = CharField()
 	favorite_id = CharField()
 	created = DateTimeField(default=datetime.datetime.now(),constraints=[SQL('DEFAULT CURRENT_TIMESTAMP')])
 	identifier = IntegerField()
 
-	class Meta:
-		database = db
-
 # Muted management
-class MutedList(Model):
+class MutedList(BaseModel):
 	user_id = CharField()
 	muted_id = CharField()
 	muted_name = CharField()
 	created = DateTimeField(default=datetime.datetime.now(),constraints=[SQL('DEFAULT CURRENT_TIMESTAMP')])
-
-	class Meta:
-		database = db
 		
 # Silence list (this is for server-wide silence role)
-class SilenceList(Model):
+class SilenceList(BaseModel):
 	user_id = CharField()
 	expiration = DateTimeField(default=None,null=True)
 	server_id = IntegerField()
-	
-	class Meta:
-		database = db
-	
+
+# Separate table for frozen so we can freeze even users not registered with bot
+class FrozenUser(BaseModel):
+	user_id = IntegerField(unique=True)
+	user_name = CharField()
+	created = DateTimeField(default=datetime.datetime.now())
+
 def create_db():
 	db.connect()
-	db.create_tables([User, Transaction, Giveaway, Contestant, BannedUser, UserFavorite, MutedList, SilenceList], safe=True)
+	db.create_tables([User, Transaction, Giveaway, Contestant, BannedUser, UserFavorite, MutedList, SilenceList, FrozenUser], safe=True)
 	logger.debug("DB Connected")
 
 create_db()
