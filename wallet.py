@@ -6,6 +6,7 @@ import db
 import datetime
 import settings
 import asyncio
+import aiohttp
 
 wallet = settings.wallet
 
@@ -27,9 +28,14 @@ def communicate_wallet(wallet_command):
 	parsed_json = json.loads(body.decode('iso-8859-1'))
 	return parsed_json
 
+async def communicate_wallet_async(wallet_command):
+	async with aiohttp.ClientSession() as session:
+		async with session.post('http://localhost:7072', json=wallet_command) as resp:
+			return await resp.json()
+
 async def get_blocks():
 	wallet_command = {'action':'block_count'}
-	wallet_output = await asyncio.get_event_loop().run_in_executor(None, communicate_wallet, wallet_command)
+	wallet_output = await communicate_wallet_async(wallet_command)
 	return (wallet_output['count'], wallet_output['unchecked'])
 
 async def create_or_fetch_user(user_id, user_name):
@@ -39,7 +45,7 @@ async def create_or_fetch_user(user_id, user_name):
 		logger.info('user %s does not exist. creating new user ...',
 					user_id)
 		wallet_command = {'action': 'account_create', 'wallet': wallet}
-		wallet_output = await asyncio.get_event_loop().run_in_executor(None, communicate_wallet, wallet_command)
+		wallet_output = await communicate_wallet_async(wallet_command)
 		address = wallet_output['account']
 		user = db.create_user(user_id=user_id, user_name=user_name,
 							  wallet_address=address)
@@ -64,7 +70,7 @@ async def get_balance(user):
 		logger.info('Fetching balance from wallet for %s', user_id)
 		wallet_command = {'action': 'account_balance',
 				  'account': user.wallet_address}
-		wallet_output = await asyncio.get_event_loop().run_in_executor(None, communicate_wallet, wallet_command)
+		wallet_output = await communicate_wallet_async(wallet_command)
 		if 'balance' not in wallet_output:
 			# Ops
 			return None
@@ -84,7 +90,7 @@ async def make_transaction_to_address(source_user, amount, withdraw_address, uid
 		# Check to see if the withdraw address is valid
 		wallet_command = {'action': 'validate_account_number',
 				  'account': withdraw_address}
-		address_validation = await asyncio.get_event_loop().run_in_executor(None, communicate_wallet, wallet_command)
+		address_validation = await communicate_wallet_async(wallet_command)
 
 		# If the address was the incorrect length, did not start with xrb_ or nano_ or was deemed invalid by the node, return an error.
 		address_prefix_valid = withdraw_address[:4] == 'ban_' \
