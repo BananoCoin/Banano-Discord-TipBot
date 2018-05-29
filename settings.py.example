@@ -1,0 +1,29 @@
+# Discord
+discord_bot_id = '';
+discord_bot_token = '';
+# Banano node wallet ID
+wallet = '';
+# Exempt users list (these user IDs will not be able to receive tips
+exempt_users = [ discord_bot_id, '395828286548344834', '405250059240996864', '418425979942207499' ]
+# Restricted roles for certain commands
+admin_roles = ['Moderators', 'Core', 'Community Managers']
+# Admin USer IDs
+admin_ids=['1234','5678']
+# Minimum amount required for !rain
+rain_minimum = 1000
+# Minimum amount required to tiprandom
+tiprandom_minimum = 10
+# Minimum amount required to start a giveaway
+giveaway_minimum = 1000
+# Max giveaway duration in minutes
+giveaway_max_duration=60
+# Default giveaway duration for giveaways started by bot
+giveaway_auto_duration=30
+# Reboot node script on timeout
+reboot_script_path="./scripts/reboot_node.sh"
+# Set channels here you do not want to allow spam in comma-separated (IE commands like `giveaawaystats`
+no_spam_channels=[403628311965597697]
+# command prefix
+command_prefix='!'
+# Status
+playing_status=command_prefix + 'help'

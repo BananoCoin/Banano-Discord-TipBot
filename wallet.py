@@ -7,6 +7,7 @@ import datetime
 import settings
 import asyncio
 import aiohttp
+import socket
 
 wallet = settings.wallet
 
@@ -29,8 +30,9 @@ def communicate_wallet(wallet_command):
 	return parsed_json
 
 async def communicate_wallet_async(wallet_command):
-	async with aiohttp.ClientSession() as session:
-		async with session.post('http://localhost:7072', json=wallet_command) as resp:
+	conn = aiohttp.TCPConnector(family=socket.AF_INET6,resolver=aiohttp.AsyncResolver())
+	async with aiohttp.ClientSession(connector=conn) as session:
+		async with session.post('http://[::1]:7072', json=wallet_command) as resp:
 			return await resp.json()
 
 async def get_blocks():

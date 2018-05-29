@@ -1,10 +1,10 @@
 #!/bin/bash
-# NANO Tip Bot Database backup
+# BANANO Tip Bot Database backup
 # Easiest way to start backing up your database, update backup_folder and database_path and stick it in /etc/cron.hourly or daily, etc.
 
 ### CHANGE THESE
 backup_folder="/path/to/store/backups"
-database_path="/path/to/banano_tip_bot/nanotipbot.db"
+database_path="/path/to/banano_tip_bot/discord.db"
 ### CHANGE THESE
 
 # Don't change me
