@@ -1,14 +1,9 @@
 import discord
 from discord.ext import commands
 from discord.ext.commands import Bot
-import threading
-from threading import Thread
-from queue import Queue
+from aiohttp import ClientError
 import random
 import secrets
-import subprocess
-import atexit
-import time
 import collections
 import random
 import re
@@ -16,7 +11,7 @@ import errno
 import asyncio
 import uuid
 import datetime
-import pycurl
+import time
 
 import wallet
 import util
@@ -26,7 +21,7 @@ import paginator
 
 logger = util.get_logger("main")
 
-BOT_VERSION = "2.3"
+BOT_VERSION = "2.5"
 
 # How many users to display in the top users count
 TOP_TIPPERS_COUNT=15
@@ -46,8 +41,10 @@ GIVEAWAY_AUTO_DURATION = settings.giveaway_auto_duration
 RAIN_DELTA=30
 # Spam Threshold (Seconds) - how long to output certain commands (e.g. bigtippers)
 SPAM_THRESHOLD=60
-# Withdraw Cooldown (Seconds) - how long a user must wait between withdraws
-WITHDRAW_COOLDOWN=300
+# Send Job (seconds) - process send transactions at this interval
+SEND_JOB=10
+# Receive check job (seconds) - checks for pending transactions and pockets them
+RECEIVE_CHECK_JOB=300
 # MAX TX_Retries - If wallet does not indicate a successful send for whatever reason, retry this many times
 MAX_TX_RETRIES=3
 # Change command prefix to whatever you want to begin commands with
@@ -477,106 +474,120 @@ paused = False
 client = Bot(command_prefix=COMMAND_PREFIX)
 client.remove_command('help')
 
-# Thread to process send transactions
-# Queue is used to communicate back to main thread
-withdrawq = Queue()
-
-def receive_block(account, block):
-	logger.info("Pocketing %s for account %s", block, account)
-	wallet_command = {
-		'action':'receive',
-		'wallet':settings.wallet,
-		'account':account,
-		'block':block
-	}
-	wallet.communicate_wallet(wallet_command)
-
-class SendProcessor(Thread):
-	def __init__(self):
-		super(SendProcessor, self).__init__()
-		self._stop_event = threading.Event()
-
-	def run(self):
-		while True:
-			# Just so we don't constantly berate the database if there's no TXs to chew through
-			time.sleep(10)
-			txs = db.get_unprocessed_transactions()
-			for tx in txs:
-				if self.stopped():
-					break
-				source_address = tx['source_address']
-				to_address = tx['to_address']
-				amount = tx['amount']
-				uid = tx['uid']
-				attempts = tx['attempts']
-				raw_withdraw_amt = str(amount) + '00000000000000000000000000000'
-				wallet_command = {
-					'action': 'send',
-					'wallet': settings.wallet,
-					'source': source_address,
-					'destination': to_address,
-					'amount': int(raw_withdraw_amt),
-					'id': uid
+# Receive check job to pocket transactions
+async def receive_check_job():
+	try:
+		logger.info("Running receive job...")
+		accts = []
+		cursor = db.User.select(db.User.wallet_address)
+		for a in cursor:
+			accts.append(a.wallet_address)
+		accts_pending_action = {
+			"action":"accounts_pending",
+			"accounts":accts,
+			"threshold":100000000000000000000000000000
+		}
+		response = await wallet.communicate_wallet_async(accts_pending_action)
+		if response is None:
+			response = 'None'
+		if 'blocks' not in response:
+			logger.error('invalid response %s. Rescheduling job', str(response))
+			await schedule_receive_job()
+			return
+		for account, blocks in response['blocks'].items():
+			for b in blocks:
+				logger.info('Receiving block %s for account %s', b, account)
+				receive_action = {
+					"action":"receive",
+					"wallet":settings.wallet,
+					"account":account,
+					"block":b
 				}
-				src_usr = db.get_user_by_wallet_address(source_address)
-				trg_usr = db.get_user_by_wallet_address(to_address)
-				source_id=None
-				target_id=None
-				pending_delta = int(amount) * -1
-				if src_usr is not None:
-					source_id=src_usr.user_id
-				if trg_usr is not None:
-					target_id=trg_usr.user_id
-				db.mark_transaction_sent(uid, pending_delta, source_id, target_id)
-				logger.debug("RPC Send")
-				try:
-					wallet_output = wallet.communicate_wallet(wallet_command)
-				except pycurl.error as e:
-					# NANO node has just flat out stopped generating work on me at least once per day
-					# No matter what I do, it just flat out stops generating work.
-					# Transactions will stay unpocketed forever, RPC sends will timeout forever
-					# Everything else will still work (e.g. account_balance)
-					# The fix is rebooting the node, so we invoke a script to do it here automatically
-					logger.info("pycurl error, attempting node reboot")
-					subprocess.call(settings.reboot_script_path,shell=True)
-					continue
-				logger.debug("RPC Response")
-				if 'block' in wallet_output:
-					txid = wallet_output['block']
-					db.mark_transaction_processed(uid, txid)
-					logger.info('TX processed. UID: %s, TXID: %s', uid, txid)
-					if target_id is None:
-						withdrawq.put({'user_id':source_id, 'txid':txid})
-					# Also generate receive block if amount is not too tiny
-					if int(amount) >= TIPGIVEAWAY_AUTO_ENTRY and target_id is not None:
-						# and spawn a thread to do this job
-						try:
-							rthread = threading.Thread(target=receive_block, args=[to_address,txid])
-							rthread.start()
-						except:
-							pass
+				rcv_response = await wallet.communicate_wallet_async(receive_action)
+				if rcv_response is None:
+					rcv_response='None'
+				if 'block' not in rcv_response:
+					logger.info("Couldn't receive %s - response: %s", b, str(rcv_response))
 				else:
-					# Not sure what happen but we'll retry a few times
-					if attempts >= MAX_TX_RETRIES:
-						logger.info("Max Retires Exceeded for TX UID: %s", uid)
-						db.mark_transaction_processed(uid, 'invalid')
-					else:
-						db.inc_tx_attempts(uid)
-				wallet.communicate_wallet({"action":"search_pending", "wallet":settings.wallet})
-			if self.stopped():
-				break
+					logger.info("pocketed block %s", b)
+		logger.info("receive job complete")
+		await schedule_receive_job()
+	except ClientError:
+		logger.info("aiohttp error, rescheduling receive_job")
+		await schedule_receive_job()
+	except Exception as e:
+		logger.exception(e)
 
-	def stop(self):
-		self._stop_event.set()
+async def schedule_receive_job():
+	await asyncio.sleep(RECEIVE_CHECK_JOB)
+	asyncio.get_event_loop().create_task(receive_check_job())
 
-	def stopped(self):
-		return self._stop_event.is_set()
+# TODO
+# Would be nice to spawn multiple threads of this at one time.
+# Mainly the work_generate process would be nice to multithread
 
-# Start bot, print info
-sp = SendProcessor()
+# This isn't as un-optimized as it seems
+# Yes a send is a long-running task due to work_generate
+# Yes we are not achieving "true" multithreading/multiprocessing with asyncio
+# But, the long-running job (work_generate) is executed outside of this program
 
-def handle_exit():
-	sp.stop()
+async def send_job():
+	try:
+		logger.info("send_job started")
+		txs = db.get_unprocessed_transactions()
+		for tx in txs:
+			source_address = tx['source_address']
+			to_address = tx['to_address']
+			amount = tx['amount']
+			uid = tx['uid']
+			attempts = tx['attempts']
+			raw_withdraw_amt = str(amount) + '00000000000000000000000000000'
+			wallet_command = {
+				'action': 'send',
+				'wallet': settings.wallet,
+				'source': source_address,
+				'destination': to_address,
+				'amount': int(raw_withdraw_amt),
+				'id': uid
+			}
+			src_usr = db.get_user_by_wallet_address(source_address)
+			trg_usr = db.get_user_by_wallet_address(to_address)
+			source_id=None
+			target_id=None
+			pending_delta = int(amount) * -1
+			if src_usr is not None:
+				source_id=src_usr.user_id
+			if trg_usr is not None:
+				target_id=trg_usr.user_id
+			db.mark_transaction_sent(uid, pending_delta, source_id, target_id)
+			logger.debug("RPC Send")
+			wallet_output = await wallet.communicate_wallet_async(wallet_command)
+			logger.debug("RPC Response")
+			if 'block' in wallet_output:
+				txid = wallet_output['block']
+				db.mark_transaction_processed(uid, txid)
+				logger.info('TX processed. UID: %s, TXID: %s', uid, txid)
+				if target_id is None and to_address != DONATION_ADDRESS:
+					# Don't wait for the result of this, doesn't matter
+					asyncio.get_event_loop().create_task(notify_of_withdraw(source_id, txid))
+			else:
+				# Not sure what happen but we'll retry a few times
+				if attempts >= MAX_TX_RETRIES:
+					logger.info("Max Retires Exceeded for TX UID: %s", uid)
+					db.mark_transaction_processed(uid, 'invalid')
+				else:
+					db.inc_tx_attempts(uid)
+		logger.info("send_job complete, rescheduling")
+		await schedule_send_job()
+	except ClientError:
+		logger.info("aiohttp error, rescheduling send_job")
+		await schedule_send_job()
+	except Exception as e:
+		logger.exception(e)
+					
+async def schedule_send_job():
+	await asyncio.sleep(SEND_JOB)
+	asyncio.get_event_loop().create_task(send_job())
 
 # Don't make them wait when bot first launches
 initial_ts=datetime.datetime.now() - datetime.timedelta(seconds=SPAM_THRESHOLD)
@@ -607,17 +618,14 @@ async def on_ready():
 	logger.info("ID: %s", client.user.id)
 	create_spam_dicts()
 	await client.change_presence(activity=discord.Game(settings.playing_status))
-	logger.info("Starting SendProcessor Thread")
-	if not sp.is_alive():
-		sp.start()
-	logger.info("Registering atexit handler")
-	atexit.register(handle_exit)
-	logger.info("Starting withdraw check job")
-	asyncio.get_event_loop().create_task(check_for_withdraw())
+	logger.info("Starting send_job")
+	asyncio.get_event_loop().create_task(send_job())
 	logger.info("Continuing outstanding giveaway")
 	asyncio.get_event_loop().create_task(start_giveaway_timer())
 	logger.info("Running unsilence job")
 	asyncio.get_event_loop().create_task(unsilence_users())
+	logger.info("Starting receive check job")
+	asyncio.get_event_loop().create_task(receive_check_job())
 
 @client.event
 async def on_member_join(member):
@@ -645,23 +653,10 @@ async def unsilence_users():
 	except Exception as ex:
 		logger.exception(ex)
 
-async def check_for_withdraw():
-	"""check_for_withdraw() checks withdraw queue for messages.
-	   After message is retrieved, send a DM to the user with
-           a link to their transaction"""
-	try:
-		await asyncio.sleep(WITHDRAW_CHECK_JOB)
-		asyncio.get_event_loop().create_task(check_for_withdraw())
-		while not withdrawq.empty():
-			withdraw = withdrawq.get(block=False)
-			if withdraw is None:
-				continue
-			user_id = withdraw['user_id']
-			txid = withdraw['txid']
-			user = await client.get_user_info(int(user_id))
-			await post_dm(user, WITHDRAW_PROCESSED_TEXT, txid)
-	except Exception as ex:
-		logger.exception(ex)
+async def notify_of_withdraw(user_id, txid):
+	"""Notify user of withdraw with a block explorer link"""
+	user = await client.get_user_info(int(user_id))
+	await post_dm(user, WITHDRAW_PROCESSED_TEXT, settings.block_explorer, txid)
 
 def is_private(channel):
 	"""Check if a discord channel is private"""
