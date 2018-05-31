@@ -49,8 +49,8 @@ RECEIVE_CHECK_JOB=300
 MAX_TX_RETRIES=3
 # Change command prefix to whatever you want to begin commands with
 COMMAND_PREFIX=settings.command_prefix
-# Withdraw Check Job - checks for completed withdraws at this interval
-WITHDRAW_CHECK_JOB=15
+# Withdraw cooldown - how long must wait until wirhdraws
+WITHDRAW_COOLDOWN=300
 # Pool giveaway auto amount (1%)
 TIPGIVEAWAY_AUTO_ENTRY=int(.01 * GIVEAWAY_MINIMUM)
 
