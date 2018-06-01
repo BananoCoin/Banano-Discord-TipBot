@@ -2,6 +2,7 @@ import discord
 from discord.ext import commands
 from discord.ext.commands import Bot
 from aiohttp import ClientError
+from asyncio import TimeoutError
 import random
 import secrets
 import collections
@@ -402,7 +403,7 @@ TIP_SELF="No valid recipients found in your tip.\n(You cannot tip yourself and c
 
 # withdraw
 WITHDRAW_SUCCESS_TEXT="Withdraw has been queued for processing, I'll send you a link to the transaction after I've broadcasted it to the network!"
-WITHDRAW_PROCESSED_TEXT="Withdraw processed:\nTransaction: https://vault.banano.co.in/transaction/{0}\nIf you have an issue with a withdraw please wait **24 hours** before contacting my master."
+WITHDRAW_PROCESSED_TEXT="Withdraw processed:\nTransaction: https://creeper.banano.cc/explorer/block/{0}\nIf you have an issue with a withdraw please wait **24 hours** before contacting my master."
 WITHDRAW_NO_BALANCE_TEXT="You have no BANANO to withdraw"
 WITHDRAW_INVALID_ADDRESS_TEXT="Withdraw address is not valid"
 WITHDRAW_COOLDOWN_TEXT="You need to wait {0} seconds before making another withdraw"
@@ -512,7 +513,7 @@ async def receive_check_job():
 					logger.info("pocketed block %s", b)
 		logger.info("receive job complete")
 		await schedule_receive_job()
-	except ClientError:
+	except (ClientError, TimeoutError):
 		logger.info("aiohttp error, rescheduling receive_job")
 		await schedule_receive_job()
 	except Exception as e:
@@ -567,7 +568,7 @@ async def send_job():
 				txid = wallet_output['block']
 				db.mark_transaction_processed(uid, txid)
 				logger.info('TX processed. UID: %s, TXID: %s', uid, txid)
-				if target_id is None and to_address != DONATION_ADDRESS:
+				if target_id is None:
 					# Don't wait for the result of this, doesn't matter
 					asyncio.get_event_loop().create_task(notify_of_withdraw(source_id, txid))
 			else:
@@ -579,12 +580,12 @@ async def send_job():
 					db.inc_tx_attempts(uid)
 		logger.info("send_job complete, rescheduling")
 		await schedule_send_job()
-	except ClientError:
+	except (ClientError, TimeoutError):
 		logger.info("aiohttp error, rescheduling send_job")
 		await schedule_send_job()
 	except Exception as e:
 		logger.exception(e)
-					
+
 async def schedule_send_job():
 	await asyncio.sleep(SEND_JOB)
 	asyncio.get_event_loop().create_task(send_job())
@@ -656,7 +657,7 @@ async def unsilence_users():
 async def notify_of_withdraw(user_id, txid):
 	"""Notify user of withdraw with a block explorer link"""
 	user = await client.get_user_info(int(user_id))
-	await post_dm(user, WITHDRAW_PROCESSED_TEXT, settings.block_explorer, txid)
+	await post_dm(user, WITHDRAW_PROCESSED_TEXT, txid)
 
 def is_private(channel):
 	"""Check if a discord channel is private"""
