@@ -1,4 +1,13 @@
-# BananoBot++ (a BANANO currency Tip Bot for Discord)
+# NOTICE! This repository is deprecated
+
+Banano's official discord tip bot can now be found here:
+
+https://github.com/bbedward/Graham_Nano_Tip_Bot
+
+
+-------
+
+BananoBot++ (a BANANO currency Tip Bot for Discord)
 
 BananoBot++ is an open source, free to use banano bot for discord.
 
