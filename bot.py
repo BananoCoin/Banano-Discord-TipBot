@@ -90,10 +90,10 @@ BALANCE = {
 }
 
 DEPOSIT ={
-		"TRIGGER"  : ["deposit", "register"],
-		"CMD"      : "{0}deposit or {0}register".format(COMMAND_PREFIX),
+		"TRIGGER"  : ["deposit", "register", "wallet", "address"],
+		"CMD"      : "{0}deposit or {0}register or {0}wallet or {0}address".format(COMMAND_PREFIX),
 		"OVERVIEW" : "Shows your account address",
-		"INFO"     : ("Displays your tip bot account address along with a QR code" +
+		"INFO"     : ("Displays your tip bot account address along with a Link to the blockchain explorer" +
 				"\n- Send BANANO to this address to increase your tip bot balance" +
 				"\n- If you do not have a tip bot account yet, this command will create one for you (receiving a tip automatically creates an account too)")
 }
@@ -302,7 +302,7 @@ WALLET_FOR = {
 }
 
 USER_FOR_WALLET = {
-		"CMD"      : "{0}userforwallet, takes: user".format(COMMAND_PREFIX),
+		"CMD"      : "{0}userforwallet, takes: address".format(COMMAND_PREFIX),
 		"INFO"     : "Returns user owning wallet address"
 }
 
@@ -394,7 +394,7 @@ BALANCE_TEXT=(	"```Actual Balance   : {0:,.2f} BANANO\n" +
 # deposit (split into 3 for easy copypasting address on mobile)
 DEPOSIT_TEXT="Your wallet address is:"
 DEPOSIT_TEXT_2="{0}"
-DEPOSIT_TEXT_3="QR: {0}"
+DEPOSIT_TEXT_3=":Account history and QR code: https://creeper.banano.cc/explorer/account/{0}"
 
 # generic tip replies (apply to numerous tip commands)
 INSUFFICIENT_FUNDS_TEXT="You don't have enough BANANO in your available balance!"
@@ -1834,8 +1834,9 @@ async def walletfor(ctx, user: discord.Member = None, user_id: str = None):
 		wa = db.get_address(user.id)
 	else:
 		wa = db.get_address(user_id)
+		user = db.get_user_by_id(user_id)
 	if wa is not None:
-		await post_dm(ctx.message.author, "Address for user: {0}", wa)
+		await post_dm(ctx.message.author, "Address for user '{0}' with Discord id {1}: {2} https://creeper.banano.cc/explorer/account/{2}", user.user_name, user.user_id, wa)
 	else:
 		await post_dm(ctx.message.author, "Could not find address for user")
 
@@ -1845,7 +1846,7 @@ async def userforwallet(ctx, address: str):
 	if u is None:
 		await post_dm(ctx.message.author, "No user with that wallet address")
 	else:
-		await post_dm(ctx.message.author, "username: {0}, discordid: {1}", u.user_name, u.user_id)
+		await post_dm(ctx.message.author, "Address https://creeper.banano.cc/explorer/account/{0} belongs to user '{1}', discordid: {2}", address, u.user_name, u.user_id)
 
 @client.command(aliases=['addtips', 'incrementtips'])
 async def increasetips(ctx, amount: float = -1.0, user: discord.Member = None):
