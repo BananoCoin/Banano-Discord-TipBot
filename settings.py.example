@@ -16,9 +16,11 @@ tiprandom_minimum = 10
 # Minimum amount required to start a giveaway
 giveaway_minimum = 1000
 # Max giveaway duration in minutes
-giveaway_max_duration=60
+giveaway_max_duration = 60
 # Default giveaway duration for giveaways started by bot
-giveaway_auto_duration=30
+giveaway_auto_duration = 30
+# Minimum amount required to rolesoak
+rolesoak_minimum = 1000
 # Reboot node script on timeout
 reboot_script_path="./scripts/reboot_node.sh"
 # Set channels here you do not want to allow spam in comma-separated (IE commands like `giveaawaystats`
